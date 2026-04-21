@@ -8,13 +8,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- SheetJS: Excel 내보내기 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  
+
 <!--
   ══════════════════════════════════════════════════════════════
   🔥 FIREBASE 설정 방법
   ══════════════════════════════════════════════════════════════
   1. https://console.firebase.google.com 접속
-  2. 프로젝트 생성 → 웹 앱 추가(</>) → 앱 등록
+  2. 프로젝트 생성 → 웹 앱 추가(</>) → 앱 등록 
   3. "Firebase SDK 추가" 화면에서 firebaseConfig 복사 후 아래 교체
   4. Firestore Database → 데이터베이스 만들기 (테스트 모드)
   5. Authentication → 로그인 방법 → 이메일/비밀번호 활성화
@@ -1150,6 +1150,10 @@ button.small {
              onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">로그인</button>
+    <div style="margin-top:16px;padding:10px 12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;font-size:11px;color:var(--accent-amber);line-height:1.6;text-align:center;">
+      ⚠️ 초기 계정: <strong>swahn@wapplab.com</strong> / <strong>admin</strong><br>
+      최초 로그인 후 <strong>계정 관리</strong> 메뉴에서 비밀번호를 반드시 변경하세요.
+    </div>
   </div>
 </div>
 
@@ -1621,13 +1625,13 @@ button.small {
 // 🔥 FIREBASE CONFIG — 본인 프로젝트 값으로 교체하세요
 // ══════════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyALdV7Tt2lA3h58-Brg_Xgx6yao6HIN5v4",
-  authDomain: "salary-93c15.firebaseapp.com",
-  projectId: "salary-93c15",
-  storageBucket: "salary-93c15.firebasestorage.app",
+  apiKey:            "AIzaSyALdV7Tt2lA3h58-Brg_Xgx6yao6HIN5v4",
+  authDomain:        "salary-93c15.firebaseapp.com",
+  projectId:         "salary-93c15",
+  storageBucket:     "salary-93c15.firebasestorage.app",
   messagingSenderId: "622371465240",
-  appId: "1:622371465240:web:6141891c8c51ca85e17b6d",
-  measurementId: "G-389D7L39C8"
+  appId:             "1:622371465240:web:6141891c8c51ca85e17b6d",
+  measurementId:     "G-389D7L39C8"
 };
 
 // ── Firebase SDK (v10 modular) ──────────────────────
@@ -1643,6 +1647,7 @@ import {
 import {
   getAuth,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   updatePassword,
@@ -1767,8 +1772,24 @@ function startListeners() {
 }
 
 // ══════════════════════════════════════════════════════
-// 🔐 Firebase Auth 함수
+// 🔑 초기 관리자 계정 설정
 // ══════════════════════════════════════════════════════
+const ADMIN_EMAIL    = "swahn@wapplab.com";
+const ADMIN_PASSWORD = "admin";   // ⚠️ 최초 로그인 후 반드시 변경하세요
+
+/** 앱 첫 실행 시 ADMIN 계정이 없으면 자동 생성 */
+async function ensureAdminAccount() {
+  try {
+    await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+    console.info("✅ ADMIN 계정 생성 완료:", ADMIN_EMAIL);
+  } catch (e) {
+    if (e.code === 'auth/email-already-in-use') {
+      // 이미 계정 존재 — 정상
+    } else {
+      console.warn("계정 초기화 오류:", e.code);
+    }
+  }
+}
 
 /** 로그인 */
 async function doLogin() {
@@ -2004,6 +2025,13 @@ function init() {
   const ov = document.getElementById('fb-loading');
   setTimeout(() => { ov.classList.add('hide'); setTimeout(() => ov.remove(), 400); }, 1200);
   setConnStatus('online', '연결됨');
+
+  // 로그인 폼에 기본 이메일 미리 채우기
+  const emailInput = document.getElementById('login-email');
+  if (emailInput) emailInput.value = ADMIN_EMAIL;
+
+  // ADMIN 계정 자동 생성 (최초 실행 시만 실제 생성됨)
+  ensureAdminAccount();
 
   // 인증 리스너 시작 (로그인 상태에 따라 앱 진입)
   setupAuthListener();
