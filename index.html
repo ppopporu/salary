@@ -14,7 +14,7 @@
   🔥 FIREBASE 설정 방법
   ══════════════════════════════════════════════════════════════
   1. https://console.firebase.google.com 접속
-  2. 프로젝트 생성 → 웹 앱 추가(</>) → 앱 등록 
+  2. 프로젝트 생성 → 웹 앱 추가(</>) → 앱 등록
   3. "Firebase SDK 추가" 화면에서 firebaseConfig 복사 후 아래 교체
   4. Firestore Database → 데이터베이스 만들기 (테스트 모드)
   5. Authentication → 로그인 방법 → 이메일/비밀번호 활성화
@@ -1139,6 +1139,10 @@ button.small {
       <div class="login-title">(주)와플랩</div>
       <div class="login-sub">4대보험 관리 시스템 · 관리자 로그인</div>
     </div>
+
+    <!-- 계정 초기화 상태 알림 -->
+    <div id="setup-status" style="display:none;margin-bottom:14px;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7;"></div>
+
     <div id="login-error" class="login-error"></div>
     <div class="login-field">
       <label>이메일</label>
@@ -1150,9 +1154,20 @@ button.small {
              onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">로그인</button>
-    <div style="margin-top:16px;padding:10px 12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;font-size:11px;color:var(--accent-amber);line-height:1.6;text-align:center;">
-      ⚠️ 초기 계정: <strong>swahn@wapplab.com</strong> / <strong>admin</strong><br>
-      최초 로그인 후 <strong>계정 관리</strong> 메뉴에서 비밀번호를 반드시 변경하세요.
+
+    <!-- 계정 생성 재시도 버튼 (오류 시만 표시) -->
+    <button id="retry-create-btn" onclick="retryCreateAccount()"
+      style="display:none;width:100%;margin-top:8px;padding:10px;background:transparent;
+             border:1px solid rgba(245,158,11,0.4);border-radius:9px;color:var(--accent-amber);
+             font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;">
+      🔄 계정 생성 재시도
+    </button>
+
+    <div style="margin-top:14px;padding:10px 12px;background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:8px;font-size:11px;color:var(--text-secondary);line-height:1.8;">
+      <strong style="color:var(--accent-blue);">초기 계정 정보</strong><br>
+      📧 swahn@wapplab.com<br>
+      🔑 비밀번호: <strong style="color:var(--text-primary);">admin1</strong><br>
+      <span style="color:var(--text-muted);font-size:10px;">로그인 후 계정 관리에서 비밀번호를 변경하세요</span>
     </div>
   </div>
 </div>
@@ -1775,21 +1790,72 @@ function startListeners() {
 // 🔑 초기 관리자 계정 설정
 // ══════════════════════════════════════════════════════
 const ADMIN_EMAIL    = "swahn@wapplab.com";
-const ADMIN_PASSWORD = "admin";   // ⚠️ 최초 로그인 후 반드시 변경하세요
+const ADMIN_PASSWORD = "admin1";  // Firebase 최소 6자 요건 (초기 비밀번호)
+
+/** setup-status 박스에 메시지 표시 */
+function showSetupStatus(type, html) {
+  const el = document.getElementById('setup-status');
+  if (!el) return;
+  el.style.display = 'block';
+  const styles = {
+    loading: 'background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);color:var(--accent-blue);',
+    success: 'background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.2);color:var(--accent-teal);',
+    warn:    'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:var(--accent-amber);',
+    error:   'background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);color:var(--accent-rose);',
+  };
+  el.style.cssText = 'display:block;margin-bottom:14px;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7;' + (styles[type] || styles.warn);
+  el.innerHTML = html;
+}
+function hideSetupStatus() {
+  const el = document.getElementById('setup-status');
+  if (el) el.style.display = 'none';
+}
 
 /** 앱 첫 실행 시 ADMIN 계정이 없으면 자동 생성 */
 async function ensureAdminAccount() {
+  showSetupStatus('loading', '⏳ ADMIN 계정 확인 중...');
   try {
     await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
-    console.info("✅ ADMIN 계정 생성 완료:", ADMIN_EMAIL);
+    // 계정 생성 성공 → Firebase가 자동 로그인시킴 → onAuthStateChanged가 앱 진입 처리
+    showSetupStatus('success', '✅ ADMIN 계정이 생성되었습니다. 자동 로그인 중...');
   } catch (e) {
     if (e.code === 'auth/email-already-in-use') {
-      // 이미 계정 존재 — 정상
+      // 계정이 이미 존재함 → 정상
+      hideSetupStatus();
+    } else if (e.code === 'auth/operation-not-allowed') {
+      showSetupStatus('error',
+        '🚫 <strong>이메일/비밀번호 인증이 비활성화되어 있습니다.</strong><br>' +
+        '<a href="https://console.firebase.google.com/project/salary-93c15/authentication/providers" ' +
+        'target="_blank" style="color:inherit;text-decoration:underline;">' +
+        '→ Firebase Console에서 활성화하기</a><br>' +
+        '<span style="opacity:.8;font-size:11px;">Authentication → 로그인 방법 → 이메일/비밀번호 → 사용 설정</span>'
+      );
+      document.getElementById('retry-create-btn').style.display = 'block';
+    } else if (e.code === 'auth/weak-password') {
+      // 비밀번호 6자 미만 오류 (admin은 5자이므로 발생 가능)
+      showSetupStatus('error',
+        '⚠️ 초기 비밀번호 오류: Firebase는 최소 6자 비밀번호를 요구합니다.<br>' +
+        '비밀번호를 <strong>admin1</strong> 이상으로 사용하세요.'
+      );
+    } else if (e.code === 'auth/network-request-failed') {
+      showSetupStatus('error', '🌐 네트워크 오류. 인터넷 연결을 확인하고 재시도하세요.');
+      document.getElementById('retry-create-btn').style.display = 'block';
     } else {
-      console.warn("계정 초기화 오류:", e.code);
+      showSetupStatus('error',
+        `❌ 계정 초기화 오류: <code style="font-family:monospace">${e.code}</code><br>` +
+        `<span style="opacity:.8;font-size:11px;">${e.message}</span>`
+      );
+      document.getElementById('retry-create-btn').style.display = 'block';
     }
   }
 }
+
+/** 계정 생성 재시도 */
+async function retryCreateAccount() {
+  document.getElementById('retry-create-btn').style.display = 'none';
+  await ensureAdminAccount();
+}
+window.retryCreateAccount = retryCreateAccount;
 
 /** 로그인 */
 async function doLogin() {
