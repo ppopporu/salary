@@ -1,0 +1,2476 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>(주)와플랩 — 4대보험 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- SheetJS: Excel 내보내기 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!--
+  ══════════════════════════════════════════════════════════════
+  🔥 FIREBASE 설정 방법
+  ══════════════════════════════════════════════════════════════
+  1. https://console.firebase.google.com 접속
+  2. 프로젝트 생성 → 웹 앱 추가(</>) → 앱 등록
+  3. "Firebase SDK 추가" 화면에서 firebaseConfig 복사 후 아래 교체
+  4. Firestore Database → 데이터베이스 만들기 (테스트 모드)
+  5. Authentication → 로그인 방법 → 이메일/비밀번호 활성화
+  6. Authentication → 사용자 → 사용자 추가 (ADMIN 계정 1개 생성)
+     예) admin@wafflelab.com / 초기비밀번호
+  ══════════════════════════════════════════════════════════════
+-->
+<style>
+:root {
+  --bg-base: #080C14;
+  --bg-surface: #0F1520;
+  --bg-elevated: #161D2E;
+  --bg-card: #111827;
+  --bg-hover: #1A2235;
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-default: rgba(255,255,255,0.10);
+  --border-strong: rgba(255,255,255,0.18);
+  --text-primary: #F1F5FD;
+  --text-secondary: #8896B3;
+  --text-muted: #4A5568;
+  --accent-blue: #4F8EF7;
+  --accent-blue-dim: rgba(79,142,247,0.15);
+  --accent-teal: #2DD4BF;
+  --accent-teal-dim: rgba(45,212,191,0.12);
+  --accent-amber: #F59E0B;
+  --accent-amber-dim: rgba(245,158,11,0.12);
+  --accent-rose: #F87171;
+  --accent-rose-dim: rgba(248,113,113,0.12);
+  --accent-green: #34D399;
+  --accent-green-dim: rgba(52,211,153,0.12);
+  --accent-purple: #A78BFA;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.3);
+  --shadow-glow: 0 0 24px rgba(79,142,247,0.15);
+  --font-mono: 'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── NOISE TEXTURE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* ── LAYOUT ── */
+.shell {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 50;
+}
+
+.sidebar-brand {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent-blue-dim);
+  border: 1px solid rgba(79,142,247,0.25);
+  border-radius: 6px;
+  padding: 4px 10px;
+  margin-bottom: 10px;
+}
+
+.brand-badge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  box-shadow: 0 0 6px var(--accent-blue);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.brand-badge-text {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 12px;
+  overflow-y: auto;
+}
+
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 12px 8px 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 400;
+  width: 100%;
+  text-align: left;
+  transition: all 0.15s ease;
+  margin-bottom: 2px;
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+  font-weight: 500;
+}
+
+.nav-item.active .nav-icon { opacity: 1; }
+
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.5;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.nav-item:hover .nav-icon,
+.nav-item.active .nav-icon { opacity: 1; }
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sidebar-footer-text {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── MAIN CONTENT ── */
+.main {
+  margin-left: 220px;
+  flex: 1;
+  padding: 32px 32px;
+  min-width: 0;
+}
+
+/* ── PAGE HEADER ── */
+.page-header {
+  margin-bottom: 28px;
+  animation: fadeIn 0.4s ease;
+}
+
+.page-header-eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.page-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* ── PANELS ── */
+.panel { display: none; animation: fadeIn 0.3s ease; }
+.panel.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s;
+}
+
+.card:hover { border-color: var(--border-default); }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ── METRIC GRID ── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--metric-accent, var(--accent-blue));
+  border-radius: 2px 2px 0 0;
+}
+
+.metric-card:hover { border-color: var(--border-default); transform: translateY(-1px); }
+
+.metric-card-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+}
+
+.metric-card-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.metric-card-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* ── MONTH NAVIGATOR ── */
+.month-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.month-nav-btn {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.month-nav-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.month-display {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 90px;
+  text-align: center;
+  padding: 0 4px;
+}
+
+.data-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.data-status-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent-teal);
+}
+
+/* ── INSURANCE BREAKDOWN CARDS ── */
+.ins-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.ins-breakdown-item {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.ins-breakdown-name {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ins-breakdown-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ins-breakdown-total {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+.ins-breakdown-split {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ── TABLES ── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.data-table th:not(:first-child) { text-align: right; }
+
+.data-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  transition: color 0.15s;
+}
+
+.data-table td:not(:first-child) { text-align: right; font-family: var(--font-mono); }
+
+.data-table tr:last-child td { border-bottom: none; }
+
+.data-table tbody tr:hover td {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.data-table tfoot td {
+  font-weight: 600;
+  color: var(--text-primary);
+  border-top: 1px solid var(--border-default);
+  border-bottom: none;
+  background: var(--bg-elevated);
+}
+
+/* Specific override for dashboard table */
+.ins-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ins-table th { text-align: right; padding: 8px 10px; font-size: 10px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border-subtle); text-transform: uppercase; letter-spacing: 0.08em; }
+.ins-table th:first-child { text-align: left; }
+.ins-table td { padding: 9px 10px; border-bottom: 1px solid var(--border-subtle); text-align: right; color: var(--text-secondary); font-family: var(--font-mono); font-size: 12px; }
+.ins-table td:first-child { text-align: left; color: var(--text-primary); font-family: 'Noto Sans KR', sans-serif; font-size: 13px; }
+.ins-table tr:last-child td { border-bottom: none; }
+.ins-table tbody tr:hover td { background: var(--bg-hover); }
+.ins-table tfoot td { font-weight: 600; color: var(--text-primary); border-top: 1px solid var(--border-default); border-bottom: none; background: var(--bg-elevated); }
+
+/* ── EMPLOYEE TABLE ── */
+.emp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.emp-table th { text-align: left; padding: 10px 16px; font-size: 10px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border-subtle); text-transform: uppercase; letter-spacing: 0.08em; }
+.emp-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.emp-table tr:last-child td { border-bottom: none; }
+.emp-table tbody tr:hover td { background: var(--bg-hover); color: var(--text-primary); }
+.emp-table td:nth-child(4) { font-family: var(--font-mono); }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.badge::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.badge-active {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+  border: 1px solid rgba(52,211,153,0.2);
+}
+.badge-active::before { background: var(--accent-green); }
+
+.badge-leave {
+  background: var(--accent-amber-dim);
+  color: var(--accent-amber);
+  border: 1px solid rgba(245,158,11,0.2);
+}
+.badge-leave::before { background: var(--accent-amber); }
+
+.badge-resigned {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+.badge-resigned::before { background: var(--text-muted); }
+
+/* ── FORMS ── */
+label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+input, select {
+  width: 100%;
+  font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif;
+  padding: 9px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  transition: all 0.15s;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+input:focus, select:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(79,142,247,0.12);
+}
+
+input::placeholder { color: var(--text-muted); }
+
+select option { background: var(--bg-card); color: var(--text-primary); }
+
+/* ── BUTTONS ── */
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+  letter-spacing: -0.01em;
+}
+
+button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+button.primary {
+  background: var(--accent-blue);
+  color: #fff;
+  border-color: var(--accent-blue);
+  font-weight: 600;
+  box-shadow: 0 2px 12px rgba(79,142,247,0.25);
+}
+
+button.primary:hover {
+  background: #6A9EFA;
+  border-color: #6A9EFA;
+  box-shadow: 0 4px 16px rgba(79,142,247,0.35);
+  transform: translateY(-1px);
+  color: #fff;
+}
+
+button.danger {
+  color: var(--accent-rose);
+  border-color: rgba(248,113,113,0.2);
+}
+
+button.danger:hover {
+  background: var(--accent-rose-dim);
+  border-color: rgba(248,113,113,0.35);
+  color: var(--accent-rose);
+}
+
+button.small {
+  padding: 5px 12px;
+  font-size: 11px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── FORM LAYOUT ── */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.form-field { margin-bottom: 12px; }
+
+/* ── FLEX UTILS ── */
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone {
+  border: 1.5px dashed var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg-elevated);
+}
+
+.upload-zone:hover, .upload-zone.drag {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-dim);
+}
+
+.upload-zone-icon {
+  width: 44px; height: 44px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 20px;
+  transition: all 0.2s;
+}
+
+.upload-zone:hover .upload-zone-icon {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-dim);
+}
+
+.upload-zone p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* ── ALERT ── */
+.alert {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.alert-info {
+  background: rgba(79,142,247,0.08);
+  border: 1px solid rgba(79,142,247,0.2);
+  color: #93B8FA;
+}
+
+.alert-icon { flex-shrink: 0; margin-top: 0px; font-size: 13px; }
+
+/* ── SECTION DIVIDER ── */
+.section-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 14px 0;
+}
+
+/* ── RESULT ROWS ── */
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+.result-row:last-child { border-bottom: none; }
+.result-label { color: var(--text-secondary); }
+.result-value { font-weight: 600; font-family: var(--font-mono); color: var(--text-primary); }
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+/* ── EMPLOYEE CHIP SELECTOR ── */
+.emp-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.emp-chip {
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  transition: all 0.15s;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.emp-chip:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+
+.emp-chip.selected {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-dim);
+  box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+.emp-chip-name { font-weight: 500; color: var(--text-primary); font-size: 13px; }
+.emp-chip-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; font-family: var(--font-mono); }
+
+/* ── RATES TABLE ── */
+.rates-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 12px;
+  line-height: 1.8;
+}
+
+.rates-note p::before { content: '• '; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  width: 440px;
+  max-width: 92vw;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  animation: modalIn 0.2s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+/* ── SLIP MODAL ── */
+.slip-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 200;
+  overflow-y: auto;
+  padding: 2rem 1rem;
+}
+
+.slip-modal {
+  background: #fff;
+  width: 700px;
+  max-width: 98vw;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  margin: auto;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+}
+
+.slip-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e8e8e8;
+  background: #fafafa;
+}
+
+.slip-toolbar span { font-size: 13px; font-weight: 600; color: #111; }
+
+.slip-toolbar-btns { display: flex; gap: 8px; }
+.slip-toolbar-btns button {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #333;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: all 0.15s;
+}
+.slip-toolbar-btns button.print-btn { background: #111; color: #fff; border-color: #111; }
+.slip-toolbar-btns button:hover { opacity: 0.8; }
+
+/* ── PAY SLIP BODY ── */
+.slip-body { padding: 2.5rem; font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif; color: #111; }
+.slip-co-name { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: #888; text-transform: uppercase; margin-bottom: 6px; }
+.slip-title { font-size: 26px; font-weight: 800; color: #111; letter-spacing: -0.03em; margin-bottom: 4px; }
+.slip-period { font-size: 13px; color: #666; margin-bottom: 2rem; }
+.slip-meta { display: grid; grid-template-columns: 1fr 1fr; border-top: 2.5px solid #111; border-bottom: 1px solid #e0e0e0; margin-bottom: 1.5rem; }
+.slip-meta-cell { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; }
+.slip-meta-cell:nth-child(odd) { border-right: 1px solid #f0f0f0; }
+.slip-meta-key { font-size: 9px; letter-spacing: 0.08em; color: #999; text-transform: uppercase; margin-bottom: 3px; }
+.slip-meta-val { font-size: 14px; font-weight: 700; color: #111; }
+.slip-section-title { font-size: 9px; letter-spacing: 0.12em; font-weight: 700; color: #aaa; text-transform: uppercase; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
+.slip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+.slip-line { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+.slip-line:last-child { border-bottom: none; }
+.slip-line-key { color: #666; }
+.slip-line-val { font-weight: 700; color: #111; font-family: 'DM Mono', monospace; }
+.slip-total-bar { background: linear-gradient(135deg, #111 0%, #2a2a3a 100%); color: #fff; padding: 16px 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.slip-total-bar-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; }
+.slip-total-bar-val { font-size: 22px; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -0.02em; }
+.slip-footer { font-size: 11px; color: #bbb; text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #eee; }
+
+/* ── HISTORY ── */
+.history-month-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-month-meta {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ── PRINT PORTAL ── */
+#print-portal { display: none; }
+
+/* ── FIREBASE LOADING OVERLAY ── */
+#fb-loading {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg-base);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+  transition: opacity 0.4s ease;
+}
+#fb-loading.hide { opacity: 0; pointer-events: none; }
+
+.fb-spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.fb-loading-text {
+  font-size: 13px; color: var(--text-secondary);
+}
+.fb-loading-sub {
+  font-size: 11px; color: var(--text-muted); margin-top: -8px;
+}
+
+/* ── CONNECTION STATUS BADGE ── */
+#conn-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-muted);
+  transition: color 0.3s;
+}
+#conn-status.online  { color: var(--accent-green); }
+#conn-status.offline { color: var(--accent-rose);  }
+#conn-status.syncing { color: var(--accent-amber); }
+.conn-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+}
+#conn-status.syncing .conn-dot { animation: pulse 1s ease-in-out infinite; }
+
+@media print {
+  .slip-backdrop, .slip-toolbar { display: none !important; }
+  .slip-modal { width: 100%; border-radius: 0; box-shadow: none; }
+  .slip-body { padding: 1.5rem 2rem; }
+  body > *:not(#print-portal) { display: none !important; }
+  #print-portal { display: block !important; }
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.empty-state-icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+  opacity: 0.4;
+}
+
+/* ══ LOGIN OVERLAY ══════════════════════════════════════════ */
+#login-overlay {
+  position: fixed; inset: 0; z-index: 8000;
+  background: var(--bg-base);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  transition: opacity 0.4s ease;
+}
+#login-overlay.hide { opacity: 0; pointer-events: none; }
+
+.login-box {
+  width: 100%; max-width: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: 40px 36px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+  animation: modalIn 0.3s ease;
+}
+.login-logo {
+  text-align: center; margin-bottom: 28px;
+}
+.login-logo-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-blue-dim);
+  border: 1px solid rgba(79,142,247,0.25);
+  border-radius: 8px; padding: 6px 14px; margin-bottom: 12px;
+}
+.login-logo-badge svg { width: 16px; height: 16px; color: var(--accent-blue); }
+.login-logo-badge span { font-size: 11px; font-weight: 700; color: var(--accent-blue); letter-spacing: 0.1em; text-transform: uppercase; }
+.login-title { font-size: 20px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 4px; }
+.login-sub   { font-size: 12px; color: var(--text-muted); }
+
+.login-field { margin-bottom: 14px; }
+.login-field label { font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+.login-field input { width: 100%; padding: 11px 14px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px; font-family: inherit; outline: none; transition: all 0.15s; }
+.login-field input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(79,142,247,0.12); }
+.login-field input::placeholder { color: var(--text-muted); }
+
+.login-btn {
+  width: 100%; padding: 12px; margin-top: 6px;
+  background: var(--accent-blue); color: #fff;
+  border: none; border-radius: var(--radius-md);
+  font-size: 14px; font-weight: 700; font-family: inherit;
+  cursor: pointer; transition: all 0.15s;
+  box-shadow: 0 4px 16px rgba(79,142,247,0.3);
+  letter-spacing: -0.01em;
+}
+.login-btn:hover { background: #6A9EFA; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79,142,247,0.4); }
+.login-btn:active { transform: translateY(0); }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.login-error {
+  background: var(--accent-rose-dim);
+  border: 1px solid rgba(248,113,113,0.2);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 12px; color: var(--accent-rose);
+  margin-bottom: 14px; display: none;
+}
+.login-error.show { display: block; }
+
+/* ══ SIDEBAR USER SECTION ══════════════════════════════════ */
+.sidebar-user {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; transition: background 0.15s;
+  border-radius: 0;
+}
+.sidebar-user:hover { background: var(--bg-hover); }
+.user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent-blue-dim);
+  border: 1px solid rgba(79,142,247,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: var(--accent-blue);
+  flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-email { font-size: 11px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role  { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.user-logout-btn {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--text-muted); border-radius: var(--radius-sm);
+  transition: all 0.15s; flex-shrink: 0;
+}
+.user-logout-btn:hover { background: var(--accent-rose-dim); color: var(--accent-rose); }
+
+/* ══ ACCOUNT PANEL ═════════════════════════════════════════ */
+.account-section-title {
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 16px; margin-top: 4px;
+}
+.account-info-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.account-info-row:last-child { border-bottom: none; }
+.account-info-label { font-size: 12px; color: var(--text-muted); }
+.account-info-value { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.account-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--accent-blue-dim);
+  border: 1px solid rgba(79,142,247,0.25);
+  border-radius: 20px; padding: 3px 10px;
+  font-size: 11px; font-weight: 600; color: var(--accent-blue);
+}
+
+/* ══ EXPORT BUTTON ROW ══════════════════════════════════════ */
+.export-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
+}
+.export-btns { display: flex; gap: 6px; }
+.btn-export-csv {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; font-size: 11px; font-weight: 600;
+  border: 1px solid rgba(45,212,191,0.3);
+  border-radius: var(--radius-md);
+  background: var(--accent-teal-dim); color: var(--accent-teal);
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+.btn-export-csv:hover { background: rgba(45,212,191,0.2); border-color: rgba(45,212,191,0.5); }
+.btn-export-xlsx {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; font-size: 11px; font-weight: 600;
+  border: 1px solid rgba(52,211,153,0.3);
+  border-radius: var(--radius-md);
+  background: var(--accent-green-dim); color: var(--accent-green);
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+.btn-export-xlsx:hover { background: rgba(52,211,153,0.2); border-color: rgba(52,211,153,0.5); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ══ LOGIN OVERLAY ════════════════════════════════════════ -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-badge">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M8 2L2 5v4c0 3 2.5 5.2 6 6 3.5-.8 6-3 6-6V5L8 2z"/>
+        </svg>
+        <span>Admin Portal</span>
+      </div>
+      <div class="login-title">(주)와플랩</div>
+      <div class="login-sub">4대보험 관리 시스템 · 관리자 로그인</div>
+    </div>
+    <div id="login-error" class="login-error"></div>
+    <div class="login-field">
+      <label>이메일</label>
+      <input type="email" id="login-email" placeholder="admin@example.com" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label>비밀번호</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">로그인</button>
+  </div>
+</div>
+
+<!-- 🔥 FIREBASE LOADING OVERLAY -->
+<div id="fb-loading">
+  <div class="fb-spinner"></div>
+  <div class="fb-loading-text">Firebase 연결 중...</div>
+  <div class="fb-loading-sub">데이터를 불러오는 중입니다</div>
+</div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-badge">
+        <div class="brand-badge-dot"></div>
+        <span class="brand-badge-text">운영중</span>
+      </div>
+      <div class="brand-name">(주)와플랩</div>
+      <div class="brand-sub">4대보험 관리 시스템</div>
+    </div>
+
+    <!-- 로그인 사용자 정보 -->
+    <div class="sidebar-user" onclick="switchTab('account', document.querySelector('[data-panel=account]'))">
+      <div class="user-avatar" id="user-avatar">A</div>
+      <div class="user-info">
+        <div class="user-email" id="user-email-display">—</div>
+        <div class="user-role">ADMIN</div>
+      </div>
+      <button class="user-logout-btn" onclick="event.stopPropagation();doLogout()" title="로그아웃">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10 11l3-3-3-3M13 8H6"/>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">메뉴</div>
+      <button class="nav-item active" onclick="switchTab('dashboard', this)" data-panel="dashboard">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/>
+          <rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/>
+        </svg>
+        대시보드
+      </button>
+      <button class="nav-item" onclick="switchTab('employees', this)" data-panel="employees">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+        </svg>
+        직원 관리
+      </button>
+      <button class="nav-item" onclick="switchTab('payroll', this)" data-panel="payroll">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="2" width="12" height="12" rx="2"/>
+          <path d="M5 6h6M5 9h4"/>
+        </svg>
+        급여대장 업로드
+      </button>
+      <button class="nav-item" onclick="switchTab('slip', this)" data-panel="slip">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 2h10a1 1 0 011 1v10l-3-2-2 2-2-2-3 2V3a1 1 0 011-1z"/>
+        </svg>
+        급여명세서
+      </button>
+      <button class="nav-item" onclick="switchTab('history', this)" data-panel="history">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>
+        </svg>
+        월별 기록
+      </button>
+      <button class="nav-item" onclick="switchTab('rates', this)" data-panel="rates">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 13L7 9l3 3 3-5"/><circle cx="7" cy="9" r="1.5" fill="currentColor" stroke="none"/>
+        </svg>
+        보험요율
+      </button>
+      <div class="nav-section-label" style="margin-top:8px;">계정</div>
+      <button class="nav-item" onclick="switchTab('account', this)" data-panel="account">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r="6.5"/>
+        </svg>
+        계정 관리
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="conn-status" class="syncing">
+        <div class="conn-dot"></div>
+        <span id="conn-label">연결 중...</span>
+      </div>
+      <div class="sidebar-footer-text" style="margin-top:6px;">2025 · Firebase Firestore</div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div id="panel-dashboard" class="panel active">
+      <div class="page-header">
+        <div class="page-header-eyebrow">Overview</div>
+        <div class="page-title">대시보드</div>
+        <div class="page-desc">월별 4대보험 현황을 확인하세요</div>
+      </div>
+
+      <div class="month-nav-bar">
+        <div class="month-nav">
+          <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+          <span class="month-display" id="dash-month"></span>
+          <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
+        </div>
+        <div class="data-status-badge">
+          <div class="data-status-dot"></div>
+          <span id="dash-status">로딩 중</span>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card" style="--metric-accent: var(--accent-blue);">
+          <div class="metric-card-label">총 직원 수</div>
+          <div class="metric-card-value" id="d-emp-cnt">0</div>
+          <div class="metric-card-sub">재직 중인 직원</div>
+        </div>
+        <div class="metric-card" style="--metric-accent: var(--accent-teal);">
+          <div class="metric-card-label">총 급여 합계</div>
+          <div class="metric-card-value" id="d-total-salary">0</div>
+          <div class="metric-card-sub">원</div>
+        </div>
+        <div class="metric-card" style="--metric-accent: var(--accent-amber);">
+          <div class="metric-card-label">직원 부담 합계</div>
+          <div class="metric-card-value" id="d-emp-total">0</div>
+          <div class="metric-card-sub">원</div>
+        </div>
+        <div class="metric-card" style="--metric-accent: var(--accent-purple);">
+          <div class="metric-card-label">회사 부담 합계</div>
+          <div class="metric-card-value" id="d-comp-total">0</div>
+          <div class="metric-card-sub">원</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">보험 종류별 합계</div>
+        </div>
+        <div class="ins-breakdown-grid">
+          <div class="ins-breakdown-item">
+            <div class="ins-breakdown-name">
+              <div class="ins-breakdown-dot" style="background:var(--accent-blue)"></div>
+              국민연금
+            </div>
+            <div class="ins-breakdown-total" id="d-pension">—</div>
+            <div class="ins-breakdown-split" id="d-pension-sub"></div>
+          </div>
+          <div class="ins-breakdown-item">
+            <div class="ins-breakdown-name">
+              <div class="ins-breakdown-dot" style="background:var(--accent-teal)"></div>
+              건강보험
+            </div>
+            <div class="ins-breakdown-total" id="d-health">—</div>
+            <div class="ins-breakdown-split" id="d-health-sub"></div>
+          </div>
+          <div class="ins-breakdown-item">
+            <div class="ins-breakdown-name">
+              <div class="ins-breakdown-dot" style="background:var(--accent-amber)"></div>
+              고용보험
+            </div>
+            <div class="ins-breakdown-total" id="d-employ">—</div>
+            <div class="ins-breakdown-split" id="d-employ-sub"></div>
+          </div>
+          <div class="ins-breakdown-item">
+            <div class="ins-breakdown-name">
+              <div class="ins-breakdown-dot" style="background:var(--accent-rose)"></div>
+              산재보험
+            </div>
+            <div class="ins-breakdown-total" id="d-accident">—</div>
+            <div class="ins-breakdown-split" id="d-accident-sub"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">직원별 4대보험 명세</div>
+        </div>
+        <div id="emp-detail-table-wrap">
+          <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            급여대장을 업로드하거나 직원을 추가하세요.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ EMPLOYEES ═══ -->
+    <div id="panel-employees" class="panel">
+      <div class="page-header">
+        <div class="page-header-eyebrow">Management</div>
+        <div class="page-title">직원 관리</div>
+        <div class="page-desc">직원 정보를 등록하고 관리하세요</div>
+      </div>
+      <div class="flex-between">
+        <span style="font-size:13px;color:var(--text-secondary)">등록 직원 <strong style="color:var(--text-primary)" id="emp-count">0</strong>명</span>
+        <button class="primary" onclick="openAddModal()">+ 직원 추가</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="emp-table">
+          <thead><tr><th>이름</th><th>입사일</th><th>재직상태</th><th>기본급</th><th>액션</th></tr></thead>
+          <tbody id="emp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ PAYROLL ═══ -->
+    <div id="panel-payroll" class="panel">
+      <div class="page-header">
+        <div class="page-header-eyebrow">Upload</div>
+        <div class="page-title">급여대장 업로드</div>
+        <div class="page-desc">CSV 파일로 일괄 업로드하거나 수동으로 입력하세요</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">파일 업로드</div>
+        </div>
+        <div class="alert alert-info">
+          <span class="alert-icon">ℹ</span>
+          <span>CSV 형식: 이름, 기본급, 식대, 교통비, 기타수당 순서로 작성해주세요.</span>
+        </div>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+          <div class="upload-zone-icon">↑</div>
+          <p style="font-weight:500;color:var(--text-primary)">클릭하거나 파일을 끌어다 놓으세요</p>
+          <p style="font-size:11px;margin-top:4px;">.csv 파일 지원</p>
+        </div>
+        <input type="file" id="file-input" accept=".csv" style="display:none" onchange="handleFileUpload(event)">
+        <div style="margin-top:16px;">
+          <div class="form-row">
+            <div class="form-field"><label>년도</label><input type="number" id="upload-year" value="2025" min="2020" max="2030"></div>
+            <div class="form-field"><label>월</label><select id="upload-month"></select></div>
+          </div>
+        </div>
+        <div id="preview-section" style="display:none;margin-top:12px;">
+          <div class="section-divider"></div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:10px;">미리보기</div>
+          <div id="preview-content"></div>
+          <button class="primary" style="width:100%;margin-top:14px;" onclick="confirmUpload()">이 데이터로 4대보험 계산 적용</button>
+        </div>
+        <div style="margin-top:16px;">
+          <div class="section-divider"></div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">수동 입력</div>
+          <div class="form-row">
+            <div class="form-field"><label>직원</label><select id="manual-emp"></select></div>
+            <div class="form-field"><label>기본급 (원)</label><input type="number" id="manual-salary" placeholder="예: 3000000"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>식대 (원)</label><input type="number" id="manual-meal" value="0"></div>
+            <div class="form-field"><label>교통비 (원)</label><input type="number" id="manual-transport" value="0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>기타수당 (원)</label><input type="number" id="manual-other" value="0"></div>
+            <div class="form-field"><label>대상 년월</label>
+              <div style="display:flex;gap:8px;">
+                <input type="number" id="manual-year" value="2025" style="width:80px">
+                <select id="manual-month" style="flex:1"></select>
+              </div>
+            </div>
+          </div>
+          <button class="primary" onclick="addManualEntry()">추가</button>
+        </div>
+      </div>
+      <div class="card" id="calc-preview" style="display:none;">
+        <div class="card-header"><div class="card-title">계산 결과</div></div>
+        <div id="calc-result-content"></div>
+      </div>
+    </div>
+
+    <!-- ═══ SLIP ═══ -->
+    <div id="panel-slip" class="panel">
+      <div class="page-header">
+        <div class="page-header-eyebrow">Documents</div>
+        <div class="page-title">급여명세서</div>
+        <div class="page-desc">직원 급여명세서를 미리보고 인쇄하세요</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">조회 대상 년월</div></div>
+        <div class="form-row" style="margin-bottom:0;">
+          <div class="form-field"><label>년도</label><input type="number" id="slip-year" value="2025"></div>
+          <div class="form-field"><label>월</label><select id="slip-month"></select></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">직원 선택</div></div>
+        <div class="emp-select-grid" id="slip-emp-grid">
+          <div class="empty-state">이 월의 급여 데이터가 없습니다.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="previewSlip(false)">👁 개별 미리보기</button>
+          <button onclick="previewSlip(true)" class="primary">🖨 전체 인쇄 (선택 직원)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ HISTORY ═══ -->
+    <div id="panel-history" class="panel">
+      <div class="page-header">
+        <div class="page-header-eyebrow">Records</div>
+        <div class="page-title">월별 기록</div>
+        <div class="page-desc">4대보험 납부 기록을 확인하세요</div>
+      </div>
+      <div class="card">
+        <div class="export-row">
+          <div class="card-title" style="margin-bottom:0;">월별 4대보험 기록</div>
+          <div class="export-btns">
+            <button class="btn-export-csv" onclick="exportAllCSV()">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+              전체 CSV
+            </button>
+            <button class="btn-export-xlsx" onclick="exportAllXLSX()">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+              전체 Excel
+            </button>
+          </div>
+        </div>
+        <div id="history-content">
+          <div class="empty-state">
+            <div class="empty-state-icon">📁</div>
+            아직 기록된 데이터가 없습니다.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ RATES ═══ -->
+    <div id="panel-rates" class="panel">
+      <div class="page-header">
+        <div class="page-header-eyebrow">Configuration</div>
+        <div class="page-title">보험요율</div>
+        <div class="page-desc">2025년 4대보험 적용 요율을 확인하세요</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">2025년 4대보험 요율표</div></div>
+        <table class="ins-table">
+          <thead><tr><th>구분</th><th>직원 부담</th><th>회사 부담</th><th>합계</th></tr></thead>
+          <tbody>
+            <tr><td>국민연금</td><td>4.50%</td><td>4.50%</td><td>9.00%</td></tr>
+            <tr><td>건강보험</td><td>3.545%</td><td>3.545%</td><td>7.09%</td></tr>
+            <tr><td>장기요양보험</td><td>건강보험료×12.95%</td><td>건강보험료×12.95%</td><td>—</td></tr>
+            <tr><td>고용보험</td><td>0.90%</td><td>1.15%</td><td>2.05%</td></tr>
+            <tr><td>산재보험</td><td>0%</td><td>1.47%</td><td>1.47%</td></tr>
+          </tbody>
+        </table>
+        <div class="rates-note" style="margin-top:14px;">
+          <p>식대(월 20만원 이하), 교통비 등 비과세 항목은 건강·고용보험 산정 기준에서 제외됩니다.</p>
+          <p>국민연금 상한액: 월 5,900,000원</p>
+          <p>산재보험은 전액 사업주 부담입니다.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">비과세 항목 설정</div></div>
+        <div class="form-row">
+          <div class="form-field"><label>식대 비과세 한도 (월, 원)</label><input type="number" id="meal-limit" value="200000"></div>
+          <div class="form-field"><label>교통비 비과세 한도 (월, 원)</label><input type="number" id="transport-limit" value="200000"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ACCOUNT ═══ -->
+    <div id="panel-account" class="panel">
+      <div class="page-header">
+        <div class="page-header-eyebrow">Settings</div>
+        <div class="page-title">계정 관리</div>
+        <div class="page-desc">관리자 계정 정보 및 비밀번호 변경</div>
+      </div>
+
+      <!-- 계정 정보 카드 -->
+      <div class="card">
+        <div class="account-section-title">계정 정보</div>
+        <div class="account-info-row">
+          <span class="account-info-label">이메일</span>
+          <span class="account-info-value" id="acc-email">—</span>
+        </div>
+        <div class="account-info-row">
+          <span class="account-info-label">권한</span>
+          <span class="account-badge">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2L2 5v4c0 3 2.5 5.2 6 6 3.5-.8 6-3 6-6V5L8 2z"/></svg>
+            ADMIN
+          </span>
+        </div>
+        <div class="account-info-row">
+          <span class="account-info-label">로그인 제공자</span>
+          <span class="account-info-value">이메일 / 비밀번호</span>
+        </div>
+        <div class="account-info-row" style="border-bottom:none;">
+          <span class="account-info-label">마지막 로그인</span>
+          <span class="account-info-value" id="acc-last-login">—</span>
+        </div>
+      </div>
+
+      <!-- 비밀번호 변경 카드 -->
+      <div class="card">
+        <div class="account-section-title">비밀번호 변경</div>
+        <div id="pw-change-msg" style="display:none;margin-bottom:14px;"></div>
+        <div class="form-field">
+          <label>현재 비밀번호</label>
+          <input type="password" id="pw-current" placeholder="현재 비밀번호 입력" autocomplete="current-password">
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>새 비밀번호</label>
+            <input type="password" id="pw-new" placeholder="8자 이상" autocomplete="new-password">
+          </div>
+          <div class="form-field">
+            <label>새 비밀번호 확인</label>
+            <input type="password" id="pw-confirm" placeholder="동일하게 입력" autocomplete="new-password">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button class="primary" onclick="changePassword()">비밀번호 변경</button>
+          <button onclick="clearPasswordFields()">초기화</button>
+        </div>
+      </div>
+
+      <!-- 세션 관리 -->
+      <div class="card">
+        <div class="account-section-title">세션</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:13px;color:var(--text-primary);font-weight:500;">로그아웃</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">현재 세션을 종료합니다</div>
+          </div>
+          <button class="danger" onclick="doLogout()">로그아웃</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══ EMPLOYEE MODAL ═══ -->
+<div class="modal-overlay" id="emp-modal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title">직원 추가</div>
+    <div class="form-field"><label>이름 *</label><input type="text" id="m-name" placeholder="홍길동"></div>
+    <div class="form-field"><label>입사일 *</label><input type="date" id="m-joindate"></div>
+    <div class="form-field"><label>기본급 (원)</label><input type="number" id="m-salary" placeholder="3000000"></div>
+    <div class="form-field"><label>재직상태</label><select id="m-status"><option value="active">재직</option><option value="leave">휴직</option><option value="resigned">퇴직</option></select></div>
+    <div class="modal-actions">
+      <button onclick="closeModal()">취소</button>
+      <button class="primary" onclick="saveEmployee()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIP MODAL ═══ -->
+<div class="slip-backdrop" id="slip-modal" style="display:none;">
+  <div class="slip-modal" id="slip-modal-inner">
+    <div class="slip-toolbar">
+      <span id="slip-modal-title">급여명세서</span>
+      <div class="slip-toolbar-btns">
+        <button onclick="printSlip()">🖨 인쇄 / PDF 저장</button>
+        <button onclick="closeSlipModal()" class="print-btn">닫기</button>
+      </div>
+    </div>
+    <div id="slip-pages"></div>
+  </div>
+</div>
+
+<!-- PRINT PORTAL -->
+<div id="print-portal" style="display:none;"></div>
+
+<script type="module">
+// ══════════════════════════════════════════════════════
+// 🔥 FIREBASE CONFIG — 본인 프로젝트 값으로 교체하세요
+// ══════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyALdV7Tt2lA3h58-Brg_Xgx6yao6HIN5v4",
+  authDomain: "salary-93c15.firebaseapp.com",
+  projectId: "salary-93c15",
+  storageBucket: "salary-93c15.firebasestorage.app",
+  messagingSenderId: "622371465240",
+  appId: "1:622371465240:web:6141891c8c51ca85e17b6d",
+  measurementId: "G-389D7L39C8"
+};
+
+// ── Firebase SDK (v10 modular) ──────────────────────
+import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore,
+  collection, doc,
+  setDoc, deleteDoc,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// ── App / DB 초기화 ─────────────────────────────────
+const app = initializeApp(FIREBASE_CONFIG);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+// ── Firestore 컬렉션 참조 ───────────────────────────
+// /employees/{employeeId}        — 직원 문서
+// /payroll/{YYYY-MM}             — 월별 급여 문서 (records 배열 포함)
+const employeesCol = collection(db, "employees");
+const payrollCol   = collection(db, "payroll");
+
+// ══════════════════════════════════════════════════════
+// 보험요율 상수
+// ══════════════════════════════════════════════════════
+const RATES = {
+  pension:  { emp: .045,  comp: .045,  salaryMax: 5900000, salaryMin: 350000 },
+  health:   { emp: .03545, comp: .03545 },
+  longcare: { rate: .1295 },
+  employ:   { emp: .009,  comp: .0115 },
+  accident: { comp: .0147 }
+};
+
+// ── 앱 상태 ─────────────────────────────────────────
+let employees    = [];
+let records      = {};     // { "2025-06": [{...}, ...], ... }
+let editingId    = null;
+let pendingUpload = null;
+let selectedEmpIds = new Set();
+let currentYear  = new Date().getFullYear();
+let currentMonth = new Date().getMonth() + 1;
+
+// ── 연결 상태 표시 ──────────────────────────────────
+function setConnStatus(state, label) {
+  const el = document.getElementById('conn-status');
+  const lb = document.getElementById('conn-label');
+  el.className = state;
+  lb.textContent = label;
+}
+
+// ══════════════════════════════════════════════════════
+// 🔥 Firestore 저장 함수
+// ══════════════════════════════════════════════════════
+
+/** 직원 1명을 Firestore에 upsert */
+async function fsSetEmployee(emp) {
+  setConnStatus('syncing', '저장 중...');
+  try {
+    await setDoc(doc(db, "employees", emp.id), {
+      ...emp,
+      updatedAt: serverTimestamp()
+    });
+    setConnStatus('online', '동기화됨');
+  } catch (e) {
+    setConnStatus('offline', '저장 실패');
+    console.error("직원 저장 오류:", e);
+    throw e;
+  }
+}
+
+/** 직원 1명을 Firestore에서 삭제 */
+async function fsDeleteEmployee(empId) {
+  setConnStatus('syncing', '삭제 중...');
+  try {
+    await deleteDoc(doc(db, "employees", empId));
+    setConnStatus('online', '동기화됨');
+  } catch (e) {
+    setConnStatus('offline', '삭제 실패');
+    console.error("직원 삭제 오류:", e);
+    throw e;
+  }
+}
+
+/** 특정 월의 급여 records 배열을 Firestore에 저장 */
+async function fsSavePayroll(mk) {
+  setConnStatus('syncing', '저장 중...');
+  try {
+    await setDoc(doc(db, "payroll", mk), {
+      records:   records[mk] || [],
+      updatedAt: serverTimestamp()
+    });
+    setConnStatus('online', '동기화됨');
+  } catch (e) {
+    setConnStatus('offline', '저장 실패');
+    console.error("급여 저장 오류:", e);
+    throw e;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// 🔥 Firestore 실시간 리스너 (onSnapshot)
+// ══════════════════════════════════════════════════════
+function startListeners() {
+  // ── 직원 컬렉션 리스너 ──
+  onSnapshot(employeesCol, snapshot => {
+    employees = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    // updatedAt(serverTimestamp)은 UI에 노출하지 않으므로 제거
+    employees.forEach(e => delete e.updatedAt);
+    renderAll();
+  }, err => {
+    console.error("직원 리스너 오류:", err);
+    setConnStatus('offline', '연결 끊김');
+  });
+
+  // ── 급여 컬렉션 리스너 ──
+  onSnapshot(payrollCol, snapshot => {
+    records = {};
+    snapshot.docs.forEach(d => {
+      records[d.id] = (d.data().records || []);
+    });
+    renderAll();
+  }, err => {
+    console.error("급여 리스너 오류:", err);
+    setConnStatus('offline', '연결 끊김');
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// 🔐 Firebase Auth 함수
+// ══════════════════════════════════════════════════════
+
+/** 로그인 */
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+  errEl.classList.remove('show');
+  if (!email || !password) { showLoginError('이메일과 비밀번호를 입력해주세요.'); return; }
+  btn.disabled = true; btn.textContent = '로그인 중...';
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    // onAuthStateChanged 가 자동으로 화면 전환
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '로그인';
+    const msg = {
+      'auth/invalid-credential':    '이메일 또는 비밀번호가 올바르지 않습니다.',
+      'auth/user-not-found':        '등록되지 않은 이메일입니다.',
+      'auth/wrong-password':        '비밀번호가 올바르지 않습니다.',
+      'auth/too-many-requests':     '로그인 시도가 너무 많습니다. 잠시 후 다시 시도하세요.',
+      'auth/network-request-failed':'네트워크 연결을 확인하세요.',
+    }[e.code] || `로그인 오류: ${e.message}`;
+    showLoginError(msg);
+  }
+}
+window.doLogin = doLogin;
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg; el.classList.add('show');
+}
+
+/** 로그아웃 */
+async function doLogout() {
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  await signOut(auth);
+}
+window.doLogout = doLogout;
+
+/** 비밀번호 변경 */
+async function changePassword() {
+  const current = document.getElementById('pw-current').value;
+  const nw      = document.getElementById('pw-new').value;
+  const confirm_= document.getElementById('pw-confirm').value;
+  const msgEl   = document.getElementById('pw-change-msg');
+  msgEl.style.display = 'none';
+
+  if (!current || !nw || !confirm_) { showPwMsg('error', '모든 필드를 입력해주세요.'); return; }
+  if (nw.length < 8)                { showPwMsg('error', '새 비밀번호는 8자 이상이어야 합니다.'); return; }
+  if (nw !== confirm_)              { showPwMsg('error', '새 비밀번호가 일치하지 않습니다.'); return; }
+
+  const user = auth.currentUser;
+  if (!user) { showPwMsg('error', '로그인 상태가 아닙니다.'); return; }
+
+  try {
+    // 재인증 (보안)
+    const cred = EmailAuthProvider.credential(user.email, current);
+    await reauthenticateWithCredential(user, cred);
+    await updatePassword(user, nw);
+    showPwMsg('success', '비밀번호가 성공적으로 변경되었습니다.');
+    clearPasswordFields();
+  } catch (e) {
+    const msg = {
+      'auth/wrong-password':     '현재 비밀번호가 올바르지 않습니다.',
+      'auth/weak-password':      '새 비밀번호가 너무 단순합니다.',
+      'auth/requires-recent-login': '보안을 위해 다시 로그인 후 시도해주세요.',
+    }[e.code] || `오류: ${e.message}`;
+    showPwMsg('error', msg);
+  }
+}
+window.changePassword = changePassword;
+
+function showPwMsg(type, msg) {
+  const el = document.getElementById('pw-change-msg');
+  el.style.display = 'block';
+  el.className = type === 'success' ? 'alert alert-info' : 'login-error show';
+  el.style.cssText = type === 'success'
+    ? 'display:block;padding:10px 14px;border-radius:10px;font-size:12px;margin-bottom:14px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.25);color:var(--accent-teal);'
+    : 'display:block;padding:10px 14px;border-radius:10px;font-size:12px;margin-bottom:14px;background:var(--accent-rose-dim);border:1px solid rgba(248,113,113,0.2);color:var(--accent-rose);';
+  el.textContent = msg;
+}
+
+function clearPasswordFields() {
+  ['pw-current','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
+  const el = document.getElementById('pw-change-msg');
+  el.style.display = 'none';
+}
+window.clearPasswordFields = clearPasswordFields;
+
+/** 인증 상태 감시 — 앱의 진입점 */
+function setupAuthListener() {
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      // ── 로그인 성공 ──
+      const ov = document.getElementById('login-overlay');
+      ov.classList.add('hide');
+      setTimeout(() => { ov.style.display = 'none'; }, 400);
+
+      // 사용자 정보 표시
+      const email  = user.email || '';
+      const initial = email.charAt(0).toUpperCase();
+      document.getElementById('user-avatar').textContent        = initial;
+      document.getElementById('user-email-display').textContent = email;
+      document.getElementById('acc-email').textContent          = email;
+      const lastLogin = user.metadata?.lastSignInTime
+        ? new Date(user.metadata.lastSignInTime).toLocaleString('ko-KR') : '—';
+      const accEl = document.getElementById('acc-last-login');
+      if (accEl) accEl.textContent = lastLogin;
+
+      // 로그인 버튼 리셋
+      const btn = document.getElementById('login-btn');
+      btn.disabled = false; btn.textContent = '로그인';
+
+      // Firestore 리스너 시작 + 앱 초기화
+      startListeners();
+      initUI();
+    } else {
+      // ── 로그아웃 ──
+      const ov = document.getElementById('login-overlay');
+      ov.style.display = 'flex';
+      ov.classList.remove('hide');
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// 📊 내보내기 함수 (CSV / Excel)
+// ══════════════════════════════════════════════════════
+
+/** records 전체를 flat 배열로 변환 */
+function buildExportRows() {
+  const rows = [];
+  const header = ['년월','이름','기본급','식대','교통비','기타수당','지급합계',
+                  '국민연금(직원)','건강보험(직원)','장기요양(직원)','고용보험(직원)','직원부담합계',
+                  '국민연금(회사)','건강보험(회사)','장기요양(회사)','고용보험(회사)','산재보험(회사)','회사부담합계',
+                  '총부담합계'];
+  rows.push(header);
+  Object.keys(records).sort().forEach(mk => {
+    const [y,m] = mk.split('-');
+    const label = `${y}년 ${parseInt(m)}월`;
+    (records[mk] || []).forEach(r => {
+      const i = r.ins;
+      const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.other||0);
+      rows.push([
+        label, r.name,
+        r.salary, r.meal||0, r.transport||0, r.other||0, gross,
+        i.pension.emp, i.health.emp, i.longcare.emp, i.employ.emp, i.totalEmp,
+        i.pension.comp, i.health.comp, i.longcare.comp, i.employ.comp, i.accident.comp, i.totalComp,
+        i.totalEmp + i.totalComp
+      ]);
+    });
+  });
+  return rows;
+}
+
+/** 특정 월 rows만 반환 */
+function buildMonthRows(mk) {
+  const [y,m] = mk.split('-');
+  const label  = `${y}년 ${parseInt(m)}월`;
+  const header = ['년월','이름','기본급','식대','교통비','기타수당','지급합계',
+                  '국민연금(직원)','건강보험(직원)','장기요양(직원)','고용보험(직원)','직원부담합계',
+                  '국민연금(회사)','건강보험(회사)','장기요양(회사)','고용보험(회사)','산재보험(회사)','회사부담합계',
+                  '총부담합계'];
+  const rows = [header];
+  (records[mk] || []).forEach(r => {
+    const i = r.ins;
+    const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.other||0);
+    rows.push([
+      label, r.name,
+      r.salary, r.meal||0, r.transport||0, r.other||0, gross,
+      i.pension.emp, i.health.emp, i.longcare.emp, i.employ.emp, i.totalEmp,
+      i.pension.comp, i.health.comp, i.longcare.comp, i.employ.comp, i.accident.comp, i.totalComp,
+      i.totalEmp + i.totalComp
+    ]);
+  });
+  return rows;
+}
+
+/** rows → CSV 다운로드 */
+function downloadCSV(rows, filename) {
+  const bom = '\uFEFF'; // Excel UTF-8 BOM
+  const csv = bom + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  a.click(); URL.revokeObjectURL(url);
+}
+
+/** rows → XLSX 다운로드 (SheetJS) */
+function downloadXLSX(rows, filename) {
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // 헤더 행 너비 자동 조정
+  ws['!cols'] = rows[0].map((_, i) => ({ wch: Math.max(10, ...rows.map(r => String(r[i]||'').length)) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '4대보험');
+  XLSX.writeFile(wb, filename);
+}
+
+function exportAllCSV()  { if (!Object.keys(records).length) { alert('내보낼 데이터가 없습니다.'); return; } downloadCSV(buildExportRows(),  `4대보험_전체_${new Date().toISOString().slice(0,10)}.csv`);  }
+function exportAllXLSX() { if (!Object.keys(records).length) { alert('내보낼 데이터가 없습니다.'); return; } downloadXLSX(buildExportRows(), `4대보험_전체_${new Date().toISOString().slice(0,10)}.xlsx`); }
+function exportMonthCSV(mk)  { downloadCSV(buildMonthRows(mk),   `4대보험_${mk}.csv`);  }
+function exportMonthXLSX(mk) { downloadXLSX(buildMonthRows(mk),  `4대보험_${mk}.xlsx`); }
+window.exportAllCSV   = exportAllCSV;
+window.exportAllXLSX  = exportAllXLSX;
+window.exportMonthCSV = exportMonthCSV;
+window.exportMonthXLSX= exportMonthXLSX;
+
+// ══════════════════════════════════════════════════════
+// 초기화
+// ══════════════════════════════════════════════════════
+function buildMonthOptions(selId, selected) {
+  const sel = document.getElementById(selId);
+  sel.innerHTML = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월']
+    .map((m,i) => `<option value="${i+1}" ${(selected || new Date().getMonth()+1)===(i+1)?'selected':''}>${m}</option>`)
+    .join('');
+}
+
+function initUI() {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth() + 1;
+
+  ['upload-month','manual-month','slip-month'].forEach(id => buildMonthOptions(id, currentMonth));
+  document.getElementById('upload-year').value = currentYear;
+  document.getElementById('manual-year').value = currentYear;
+  document.getElementById('slip-year').value   = currentYear;
+  document.getElementById('slip-year').addEventListener('change', refreshSlipPanel);
+  document.getElementById('slip-month').addEventListener('change', refreshSlipPanel);
+}
+
+function init() {
+  // 로딩 오버레이는 Auth 상태 확인 후 제거
+  const ov = document.getElementById('fb-loading');
+  setTimeout(() => { ov.classList.add('hide'); setTimeout(() => ov.remove(), 400); }, 1200);
+  setConnStatus('online', '연결됨');
+
+  // 인증 리스너 시작 (로그인 상태에 따라 앱 진입)
+  setupAuthListener();
+}
+
+function fmt(n) { return Math.round(n).toLocaleString('ko-KR'); }
+function renderAll() {
+  renderEmployees();
+  renderDashboard();
+  renderHistory();
+  populateManualSelect();
+  refreshSlipPanel();
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'payroll') populateManualSelect();
+  if (name === 'slip')    refreshSlipPanel();
+}
+// expose to HTML onclick
+window.switchTab = switchTab;
+
+function calcInsurance(salary, meal=0, transport=0, other=0) {
+  const mealLimit      = parseInt(document.getElementById('meal-limit').value)      || 200000;
+  const transportLimit = parseInt(document.getElementById('transport-limit').value) || 200000;
+  const taxableMeal      = Math.max(0, meal      - mealLimit);
+  const taxableTransport = Math.max(0, transport - transportLimit);
+  const base        = salary + taxableMeal + taxableTransport + other;
+  const basePension = Math.min(Math.max(salary, RATES.pension.salaryMin), RATES.pension.salaryMax);
+  const pension_e = Math.round(basePension * RATES.pension.emp);
+  const pension_c = Math.round(basePension * RATES.pension.comp);
+  const health_e  = Math.round(base * RATES.health.emp);
+  const health_c  = Math.round(base * RATES.health.comp);
+  const lc_e      = Math.round(health_e * RATES.longcare.rate);
+  const lc_c      = Math.round(health_c * RATES.longcare.rate);
+  const employ_e  = Math.round(base * RATES.employ.emp);
+  const employ_c  = Math.round(base * RATES.employ.comp);
+  const accident_c= Math.round(base * RATES.accident.comp);
+  return {
+    pension:  { emp: pension_e, comp: pension_c },
+    health:   { emp: health_e,  comp: health_c  },
+    longcare: { emp: lc_e,      comp: lc_c      },
+    employ:   { emp: employ_e,  comp: employ_c  },
+    accident: { emp: 0,         comp: accident_c },
+    totalEmp:  pension_e + health_e + lc_e + employ_e,
+    totalComp: pension_c + health_c + lc_c + employ_c + accident_c,
+    base
+  };
+}
+
+function renderDashboard() {
+  const mk = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
+  document.getElementById('dash-month').textContent = `${currentYear}년 ${currentMonth}월`;
+  const monthRecords = records[mk] || [];
+  document.getElementById('d-emp-cnt').textContent = employees.filter(e => e.status === 'active').length;
+  document.getElementById('dash-status').textContent = monthRecords.length > 0 ? `데이터 ${monthRecords.length}건` : '데이터 없음';
+  if (!monthRecords.length) {
+    document.getElementById('d-total-salary').textContent = '0';
+    document.getElementById('d-emp-total').textContent    = '0';
+    document.getElementById('d-comp-total').textContent   = '0';
+    ['pension','health','employ','accident'].forEach(k => {
+      document.getElementById('d-'+k).textContent     = '—';
+      document.getElementById('d-'+k+'-sub').textContent = '';
+    });
+    document.getElementById('emp-detail-table-wrap').innerHTML =
+      '<div class="empty-state"><div class="empty-state-icon">📊</div>이 월의 급여 데이터가 없습니다.</div>';
+    return;
+  }
+  let ts=0, te=0, tc=0, pe=0, pc=0, he=0, hc=0, ee=0, ec=0, ac=0;
+  monthRecords.forEach(r => {
+    ts += r.salary||0; te += r.ins.totalEmp; tc += r.ins.totalComp;
+    pe += r.ins.pension.emp; pc += r.ins.pension.comp;
+    he += r.ins.health.emp + r.ins.longcare.emp;
+    hc += r.ins.health.comp + r.ins.longcare.comp;
+    ee += r.ins.employ.emp; ec += r.ins.employ.comp;
+    ac += r.ins.accident.comp;
+  });
+  document.getElementById('d-total-salary').textContent = fmt(ts);
+  document.getElementById('d-emp-total').textContent    = fmt(te);
+  document.getElementById('d-comp-total').textContent   = fmt(tc);
+  document.getElementById('d-pension').textContent      = fmt(pe+pc)+'원';
+  document.getElementById('d-pension-sub').textContent  = `직원 ${fmt(pe)} / 회사 ${fmt(pc)}`;
+  document.getElementById('d-health').textContent       = fmt(he+hc)+'원';
+  document.getElementById('d-health-sub').textContent   = `직원 ${fmt(he)} / 회사 ${fmt(hc)}`;
+  document.getElementById('d-employ').textContent       = fmt(ee+ec)+'원';
+  document.getElementById('d-employ-sub').textContent   = `직원 ${fmt(ee)} / 회사 ${fmt(ec)}`;
+  document.getElementById('d-accident').textContent     = fmt(ac)+'원';
+  document.getElementById('d-accident-sub').textContent = '전액 회사 부담';
+  const mk2 = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
+  let html = '<table class="ins-table"><thead><tr><th>이름</th><th>급여</th><th>직원 부담</th><th>회사 부담</th><th>합계</th><th></th></tr></thead><tbody>';
+  monthRecords.forEach(r => {
+    html += `<tr>
+      <td style="text-align:left;color:var(--text-primary)">${r.name}</td>
+      <td>${fmt(r.salary)}</td>
+      <td>${fmt(r.ins.totalEmp)}</td>
+      <td>${fmt(r.ins.totalComp)}</td>
+      <td style="font-weight:600">${fmt(r.ins.totalEmp+r.ins.totalComp)}</td>
+      <td><button class="small" onclick="quickSlip('${r.empId||r.name}','${mk2}')">명세서</button></td>
+    </tr>`;
+  });
+  html += `<tfoot><tr><td style="text-align:left">합계</td><td>${fmt(ts)}</td><td>${fmt(te)}</td><td>${fmt(tc)}</td><td>${fmt(te+tc)}</td><td></td></tr></tfoot></tbody></table>`;
+  document.getElementById('emp-detail-table-wrap').innerHTML = html;
+}
+
+function changeMonth(d) {
+  currentMonth += d;
+  if (currentMonth > 12) { currentMonth = 1;  currentYear++; }
+  if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
+  renderDashboard();
+}
+window.changeMonth = changeMonth;
+
+function renderEmployees() {
+  document.getElementById('emp-count').textContent = employees.length;
+  const tbody = document.getElementById('emp-tbody');
+  if (!employees.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">직원을 추가해주세요.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = employees.map(e => `
+    <tr>
+      <td style="font-weight:600;color:var(--text-primary)">${e.name}</td>
+      <td>${e.joinDate||'—'}</td>
+      <td><span class="badge badge-${e.status==='active'?'active':e.status==='leave'?'leave':'resigned'}">${e.status==='active'?'재직':e.status==='leave'?'휴직':'퇴직'}</span></td>
+      <td>${e.salary ? fmt(e.salary)+'원' : '—'}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="small" onclick="openEditModal('${e.id}')">수정</button>
+        <button class="small danger" onclick="deleteEmployee('${e.id}')">삭제</button>
+      </td>
+    </tr>`).join('');
+}
+
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = '직원 추가';
+  ['m-name','m-joindate','m-salary'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('m-status').value = 'active';
+  document.getElementById('emp-modal').style.display = 'flex';
+}
+window.openAddModal = openAddModal;
+
+function openEditModal(id) {
+  const e = employees.find(x => x.id === id);
+  if (!e) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent    = '직원 수정';
+  document.getElementById('m-name').value               = e.name;
+  document.getElementById('m-joindate').value           = e.joinDate || '';
+  document.getElementById('m-salary').value             = e.salary || '';
+  document.getElementById('m-status').value             = e.status || 'active';
+  document.getElementById('emp-modal').style.display    = 'flex';
+}
+window.openEditModal = openEditModal;
+
+function closeModal() { document.getElementById('emp-modal').style.display = 'none'; }
+window.closeModal = closeModal;
+
+async function saveEmployee() {
+  const name     = document.getElementById('m-name').value.trim();
+  const joinDate = document.getElementById('m-joindate').value;
+  const salary   = parseInt(document.getElementById('m-salary').value) || 0;
+  const status   = document.getElementById('m-status').value;
+  if (!name) { alert('이름을 입력해주세요.'); return; }
+
+  const emp = {
+    id:       editingId || (Date.now().toString() + Math.random().toString(36).slice(2)),
+    name, joinDate, salary, status
+  };
+
+  try {
+    await fsSetEmployee(emp);
+    closeModal();
+    // onSnapshot이 자동으로 renderAll() 호출
+  } catch (e) {
+    alert('저장 중 오류가 발생했습니다. 콘솔을 확인하세요.');
+  }
+}
+window.saveEmployee = saveEmployee;
+
+async function deleteEmployee(id) {
+  if (!confirm('직원을 삭제하시겠습니까?')) return;
+  try {
+    await fsDeleteEmployee(id);
+    // onSnapshot이 자동으로 renderAll() 호출
+  } catch (e) {
+    alert('삭제 중 오류가 발생했습니다.');
+  }
+}
+window.deleteEmployee = deleteEmployee;
+
+function populateManualSelect() {
+  const sel = document.getElementById('manual-emp');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">직원 선택</option>' +
+    employees.filter(e => e.status === 'active')
+             .map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+}
+
+function onDragOver(e)  { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag'); }
+function onDragLeave()  { document.getElementById('upload-zone').classList.remove('drag'); }
+function onDrop(e) {
+  e.preventDefault(); document.getElementById('upload-zone').classList.remove('drag');
+  const f = e.dataTransfer.files[0]; if (f) processFile(f);
+}
+function handleFileUpload(e) { const f = e.target.files[0]; if (f) processFile(f); }
+window.onDragOver = onDragOver; window.onDragLeave = onDragLeave;
+window.onDrop = onDrop; window.handleFileUpload = handleFileUpload;
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const rows = e.target.result.split('\n').filter(l=>l.trim()).map(l=>{
+      const p = l.split(',');
+      return { name:(p[0]||'').trim(), salary:parseInt(p[1])||0, meal:parseInt(p[2])||0, transport:parseInt(p[3])||0, other:parseInt(p[4])||0 };
+    }).filter(r=>r.name);
+    pendingUpload = rows;
+    let html = '<table class="ins-table"><thead><tr><th>이름</th><th>기본급</th><th>식대</th><th>교통비</th><th>기타</th></tr></thead><tbody>';
+    rows.forEach(r => { html += `<tr><td style="text-align:left">${r.name}</td><td>${fmt(r.salary)}</td><td>${fmt(r.meal)}</td><td>${fmt(r.transport)}</td><td>${fmt(r.other)}</td></tr>`; });
+    html += '</tbody></table>';
+    document.getElementById('preview-content').innerHTML = html;
+    document.getElementById('preview-section').style.display = 'block';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function confirmUpload() {
+  if (!pendingUpload || !pendingUpload.length) return;
+  const year  = parseInt(document.getElementById('upload-year').value);
+  const month = parseInt(document.getElementById('upload-month').value);
+  const mk    = `${year}-${String(month).padStart(2,'0')}`;
+  if (!records[mk]) records[mk] = [];
+  const processed = [];
+  for (const row of pendingUpload) {
+    let emp = employees.find(e => e.name === row.name && e.status === 'active');
+    if (!emp) {
+      emp = { id: Date.now().toString()+Math.random().toString(36).slice(2), name:row.name, joinDate:'', salary:row.salary, status:'active' };
+      await fsSetEmployee(emp);
+    } else if (row.salary) { emp.salary = row.salary; await fsSetEmployee(emp); }
+    const ins = calcInsurance(row.salary, row.meal, row.transport, row.other);
+    const rec = { empId:emp.id, name:row.name, salary:row.salary, meal:row.meal, transport:row.transport, other:row.other, ins };
+    const ei  = records[mk].findIndex(r => r.name === row.name);
+    if (ei >= 0) records[mk][ei] = rec; else records[mk].push(rec);
+    processed.push(rec);
+  }
+  await fsSavePayroll(mk);
+  pendingUpload = null;
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  showCalcPreview(processed);
+  alert(`${year}년 ${month}월 급여대장 적용 완료 (${processed.length}명)`);
+}
+window.confirmUpload = confirmUpload;
+
+async function addManualEntry() {
+  const empId     = document.getElementById('manual-emp').value;
+  const salary    = parseInt(document.getElementById('manual-salary').value)    || 0;
+  const meal      = parseInt(document.getElementById('manual-meal').value)      || 0;
+  const transport = parseInt(document.getElementById('manual-transport').value) || 0;
+  const other     = parseInt(document.getElementById('manual-other').value)     || 0;
+  const year      = parseInt(document.getElementById('manual-year').value);
+  const month     = parseInt(document.getElementById('manual-month').value);
+  if (!empId)  { alert('직원을 선택해주세요.');  return; }
+  if (!salary) { alert('기본급을 입력해주세요.'); return; }
+  const emp = employees.find(e => e.id === empId); if (!emp) return;
+  const ins = calcInsurance(salary, meal, transport, other);
+  const mk  = `${year}-${String(month).padStart(2,'0')}`;
+  if (!records[mk]) records[mk] = [];
+  const rec = { empId, name:emp.name, salary, meal, transport, other, ins };
+  const ei  = records[mk].findIndex(r => r.empId === empId);
+  if (ei >= 0) records[mk][ei] = rec; else records[mk].push(rec);
+  await fsSavePayroll(mk);
+  showCalcPreview([rec]);
+}
+window.addManualEntry = addManualEntry;
+
+function showCalcPreview(recs) {
+  document.getElementById('calc-preview').style.display = 'block';
+  document.getElementById('calc-result-content').innerHTML = recs.map(r => `
+    <div style="margin-bottom:14px;">
+      <div style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">${r.name} — ${fmt(r.salary)}원</div>
+      <div class="result-row"><span class="result-label">국민연금 (직원/회사)</span><span class="result-value">${fmt(r.ins.pension.emp)} / ${fmt(r.ins.pension.comp)}원</span></div>
+      <div class="result-row"><span class="result-label">건강+장기요양 (직원/회사)</span><span class="result-value">${fmt(r.ins.health.emp+r.ins.longcare.emp)} / ${fmt(r.ins.health.comp+r.ins.longcare.comp)}원</span></div>
+      <div class="result-row"><span class="result-label">고용보험 (직원/회사)</span><span class="result-value">${fmt(r.ins.employ.emp)} / ${fmt(r.ins.employ.comp)}원</span></div>
+      <div class="result-row"><span class="result-label">산재보험 (회사)</span><span class="result-value">${fmt(r.ins.accident.comp)}원</span></div>
+      <div class="section-divider"></div>
+      <div class="total-row"><span>직원 부담</span><span>${fmt(r.ins.totalEmp)}원</span></div>
+      <div class="total-row"><span>회사 부담</span><span>${fmt(r.ins.totalComp)}원</span></div>
+    </div>`).join('<div class="section-divider"></div>');
+}
+
+function renderHistory() {
+  const keys = Object.keys(records).sort().reverse();
+  if (!keys.length) { document.getElementById('history-content').innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div>아직 기록된 데이터가 없습니다.</div>'; return; }
+  let html = '';
+  keys.forEach(mk => {
+    const [y,m] = mk.split('-'); const recs = records[mk];
+    let te=0, tc=0, ts=0; recs.forEach(r=>{ te+=r.ins.totalEmp; tc+=r.ins.totalComp; ts+=r.salary; });
+    html += `<div style="margin-bottom:24px;">
+      <div class="export-row">
+        <div class="history-month-header" style="margin-bottom:0;">
+          <span>${y}년 ${parseInt(m)}월 <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:6px;">${recs.length}명</span></span>
+          <span class="history-month-meta" style="margin-left:12px;">직원 ${fmt(te)}원 / 회사 ${fmt(tc)}원</span>
+        </div>
+        <div class="export-btns">
+          <button class="btn-export-csv"  onclick="exportMonthCSV('${mk}')">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+            CSV
+          </button>
+          <button class="btn-export-xlsx" onclick="exportMonthXLSX('${mk}')">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+            Excel
+          </button>
+        </div>
+      </div>
+      <table class="ins-table"><thead><tr><th>이름</th><th>급여</th><th>직원 부담</th><th>회사 부담</th><th>합계</th><th></th></tr></thead><tbody>`;
+    recs.forEach(r => { html += `<tr><td style="text-align:left">${r.name}</td><td>${fmt(r.salary)}</td><td>${fmt(r.ins.totalEmp)}</td><td>${fmt(r.ins.totalComp)}</td><td style="font-weight:600">${fmt(r.ins.totalEmp+r.ins.totalComp)}</td><td><button class="small" onclick="quickSlip('${r.empId||r.name}','${mk}')">명세서</button></td></tr>`; });
+    html += `<tfoot><tr><td style="text-align:left">합계</td><td>${fmt(ts)}</td><td>${fmt(te)}</td><td>${fmt(tc)}</td><td>${fmt(te+tc)}</td><td></td></tr></tfoot></tbody></table></div>`;
+  });
+  document.getElementById('history-content').innerHTML = html;
+}
+
+function refreshSlipPanel() {
+  const year  = parseInt(document.getElementById('slip-year').value)  || currentYear;
+  const month = parseInt(document.getElementById('slip-month').value) || currentMonth;
+  const mk    = `${year}-${String(month).padStart(2,'0')}`;
+  const recs  = records[mk] || [];
+  selectedEmpIds.clear();
+  const grid = document.getElementById('slip-emp-grid');
+  if (!recs.length) { grid.innerHTML = '<div class="empty-state">이 월의 급여 데이터가 없습니다.</div>'; return; }
+  grid.innerHTML = recs.map(r => `<div class="emp-chip" id="chip-${r.empId||r.name}" onclick="toggleEmpChip('${r.empId||r.name}',this)"><div class="emp-chip-name">${r.name}</div><div class="emp-chip-sub">${fmt(r.salary)}원</div></div>`).join('');
+}
+
+function toggleEmpChip(id, el) {
+  if (selectedEmpIds.has(id)) { selectedEmpIds.delete(id); el.classList.remove('selected'); }
+  else { selectedEmpIds.add(id); el.classList.add('selected'); }
+}
+window.toggleEmpChip = toggleEmpChip;
+
+function getSlipRecs() {
+  const year  = parseInt(document.getElementById('slip-year').value)  || currentYear;
+  const month = parseInt(document.getElementById('slip-month').value) || currentMonth;
+  const mk    = `${year}-${String(month).padStart(2,'0')}`;
+  return { year, month, mk, recs: records[mk] || [] };
+}
+
+function previewSlip(printAll) {
+  const { year, month, mk, recs } = getSlipRecs();
+  if (!recs.length) { alert('이 월의 급여 데이터가 없습니다.'); return; }
+  let targets = recs;
+  if (!printAll) {
+    if (!selectedEmpIds.size) { alert('미리볼 직원을 선택해주세요.'); return; }
+    targets = recs.filter(r => selectedEmpIds.has(r.empId || r.name));
+  }
+  openSlipModal(targets, year, month, printAll);
+}
+window.previewSlip = previewSlip;
+
+function quickSlip(empId, mk) {
+  const recs = records[mk] || [];
+  const r    = recs.find(x => (x.empId || x.name) === empId);
+  if (!r) return;
+  const [y, m] = mk.split('-');
+  openSlipModal([r], parseInt(y), parseInt(m), false);
+}
+window.quickSlip = quickSlip;
+
+function openSlipModal(targets, year, month, isPrintAll) {
+  document.getElementById('slip-pages').innerHTML = targets.map((r,i) => buildSlipHTML(r, year, month, i>0)).join('');
+  document.getElementById('slip-modal-title').textContent = isPrintAll
+    ? `급여명세서 — ${year}년 ${month}월 전체 (${targets.length}명)`
+    : `급여명세서 — ${r_nameOrFirst(targets)} ${year}년 ${month}월`;
+  document.getElementById('slip-modal').style.display = 'flex';
+}
+
+function r_nameOrFirst(targets) { return targets.length===1 ? targets[0].name : `${targets[0].name} 외 ${targets.length-1}명`; }
+
+function buildSlipHTML(r, year, month, pageBreak) {
+  const emp      = employees.find(e => e.id === r.empId) || { name:r.name, joinDate:'-', status:'active' };
+  const ins      = r.ins;
+  const grossPay = r.salary + (r.meal||0) + (r.transport||0) + (r.other||0);
+  const netPay   = grossPay - ins.totalEmp;
+  const today    = new Date();
+  const payDate  = `${year}년 ${month}월 ${new Date(year,month,0).getDate()}일`;
+  const pb       = pageBreak ? 'style="page-break-before:always;border-top:2px solid #eee;margin-top:0;padding-top:2.5rem;"' : '';
+  return `<div class="slip-body" ${pb}>
+  <div class="slip-co-name">(주)와플랩</div>
+  <div class="slip-title">급여명세서</div>
+  <div class="slip-period">${year}년 ${month}월 귀속 · 지급일 ${payDate}</div>
+  <div class="slip-meta">
+    <div class="slip-meta-cell"><div class="slip-meta-key">성명</div><div class="slip-meta-val">${r.name}</div></div>
+    <div class="slip-meta-cell"><div class="slip-meta-key">입사일</div><div class="slip-meta-val">${emp.joinDate||'-'}</div></div>
+    <div class="slip-meta-cell"><div class="slip-meta-key">재직상태</div><div class="slip-meta-val">${emp.status==='active'?'재직':emp.status==='leave'?'휴직':'퇴직'}</div></div>
+    <div class="slip-meta-cell"><div class="slip-meta-key">발행일</div><div class="slip-meta-val">${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일</div></div>
+  </div>
+  <div class="slip-grid">
+    <div>
+      <div class="slip-section-title">지급 내역</div>
+      <div class="slip-line"><span class="slip-line-key">기본급</span><span class="slip-line-val">${fmt(r.salary)}원</span></div>
+      ${r.meal?`<div class="slip-line"><span class="slip-line-key">식대</span><span class="slip-line-val">${fmt(r.meal)}원</span></div>`:''}
+      ${r.transport?`<div class="slip-line"><span class="slip-line-key">교통비</span><span class="slip-line-val">${fmt(r.transport)}원</span></div>`:''}
+      ${r.other?`<div class="slip-line"><span class="slip-line-key">기타수당</span><span class="slip-line-val">${fmt(r.other)}원</span></div>`:''}
+      <div class="slip-line" style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;"><span class="slip-line-key" style="font-weight:700;color:#111;">지급 합계</span><span class="slip-line-val">${fmt(grossPay)}원</span></div>
+    </div>
+    <div>
+      <div class="slip-section-title">공제 내역 (직원 부담)</div>
+      <div class="slip-line"><span class="slip-line-key">국민연금</span><span class="slip-line-val">${fmt(ins.pension.emp)}원</span></div>
+      <div class="slip-line"><span class="slip-line-key">건강보험</span><span class="slip-line-val">${fmt(ins.health.emp)}원</span></div>
+      <div class="slip-line"><span class="slip-line-key">장기요양보험</span><span class="slip-line-val">${fmt(ins.longcare.emp)}원</span></div>
+      <div class="slip-line"><span class="slip-line-key">고용보험</span><span class="slip-line-val">${fmt(ins.employ.emp)}원</span></div>
+      <div class="slip-line" style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;"><span class="slip-line-key" style="font-weight:700;color:#111;">공제 합계</span><span class="slip-line-val">${fmt(ins.totalEmp)}원</span></div>
+    </div>
+  </div>
+  <div class="slip-total-bar">
+    <div><div class="slip-total-bar-label">실수령액</div></div>
+    <div class="slip-total-bar-val">${fmt(netPay)}원</div>
+  </div>
+  <div class="slip-section-title">회사 부담 4대보험</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.5rem;">
+    <div style="background:#f8f8f8;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#999;margin-bottom:4px;">국민연금</div><div style="font-size:13px;font-weight:700;">${fmt(ins.pension.comp)}원</div></div>
+    <div style="background:#f8f8f8;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#999;margin-bottom:4px;">건강+장기요양</div><div style="font-size:13px;font-weight:700;">${fmt(ins.health.comp+ins.longcare.comp)}원</div></div>
+    <div style="background:#f8f8f8;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#999;margin-bottom:4px;">고용보험</div><div style="font-size:13px;font-weight:700;">${fmt(ins.employ.comp)}원</div></div>
+    <div style="background:#f8f8f8;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#999;margin-bottom:4px;">산재보험</div><div style="font-size:13px;font-weight:700;">${fmt(ins.accident.comp)}원</div></div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;font-size:13px;"><span style="color:#888;margin-right:12px;">회사 부담 합계</span><span style="font-weight:800;font-family:'DM Mono',monospace;">${fmt(ins.totalComp)}원</span></div>
+  <div class="slip-footer">(주)와플랩 · 본 명세서는 급여 지급 내역을 확인하기 위한 공식 문서입니다.</div>
+</div>`;
+}
+
+function closeSlipModal() { document.getElementById('slip-modal').style.display = 'none'; }
+window.closeSlipModal = closeSlipModal;
+
+function printSlip() {
+  const content = document.getElementById('slip-pages').innerHTML;
+  const portal  = document.getElementById('print-portal');
+  portal.innerHTML = `<style>
+    @page{margin:1.5cm;}
+    body{font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;}
+    .slip-body{padding:1.5rem 0;}
+    .slip-co-name{font-size:10px;font-weight:700;letter-spacing:.12em;color:#888;text-transform:uppercase;margin-bottom:4px;}
+    .slip-title{font-size:22px;font-weight:800;margin-bottom:2px;letter-spacing:-0.02em;}
+    .slip-period{font-size:12px;color:#666;margin-bottom:1.5rem;}
+    .slip-meta{display:grid;grid-template-columns:1fr 1fr;border-top:2.5px solid #000;border-bottom:1px solid #ddd;margin-bottom:1.2rem;}
+    .slip-meta-cell{padding:8px 10px;border-bottom:1px solid #eee;}
+    .slip-meta-cell:nth-child(odd){border-right:1px solid #eee;}
+    .slip-meta-key{font-size:9px;letter-spacing:.06em;color:#999;text-transform:uppercase;margin-bottom:1px;}
+    .slip-meta-val{font-size:13px;font-weight:700;}
+    .slip-section-title{font-size:9px;letter-spacing:.1em;font-weight:700;color:#aaa;text-transform:uppercase;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #eee;}
+    .slip-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.2rem;}
+    .slip-line{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f5f5f5;font-size:12px;}
+    .slip-line-key{color:#666;} .slip-line-val{font-weight:700;}
+    .slip-total-bar{background:#111;color:#fff;padding:12px 16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;}
+    .slip-total-bar-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.6;}
+    .slip-total-bar-val{font-size:18px;font-weight:800;}
+    .slip-footer{font-size:10px;color:#bbb;text-align:center;margin-top:1.2rem;padding-top:0.8rem;border-top:1px solid #eee;}
+    .page-break{page-break-before:always;border-top:2px solid #eee;padding-top:1.5rem;margin-top:0;}
+  </style>` + content;
+  portal.style.display = 'block';
+  window.print();
+  setTimeout(() => { portal.style.display = 'none'; portal.innerHTML = ''; }, 2000);
+}
+window.printSlip = printSlip;
+
+// ── 앱 시작 ──
+init();
+</script>
+</body>
+</html>
