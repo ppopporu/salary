@@ -1384,47 +1384,75 @@ button.small {
       <div class="page-header">
         <div class="page-header-eyebrow">Upload</div>
         <div class="page-title">급여대장 업로드</div>
-        <div class="page-desc">CSV 파일로 일괄 업로드하거나 수동으로 입력하세요</div>
+        <div class="page-desc">엑셀(xlsx) 또는 CSV 파일로 일괄 업로드하거나 수동으로 입력하세요</div>
       </div>
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">파일 업로드</div>
+        <div class="export-row" style="margin-bottom:14px;">
+          <div class="card-title" style="margin-bottom:0;">파일 업로드</div>
+          <button class="btn-export-xlsx" onclick="downloadPayrollTemplate()">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+            서식 템플릿 다운로드
+          </button>
         </div>
-        <div class="alert alert-info">
-          <span class="alert-icon">ℹ</span>
-          <span>CSV 형식: 이름, 기본급, 식대, 교통비, 기타수당 순서로 작성해주세요.</span>
+        <!-- 컬럼 안내 -->
+        <div style="margin-bottom:14px;padding:12px 14px;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow-x:auto;">
+          <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">엑셀 컬럼 구성 (9개)</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <span style="padding:3px 8px;background:rgba(79,142,247,0.12);border:1px solid rgba(79,142,247,0.25);border-radius:4px;font-size:10px;color:var(--accent-blue);font-weight:600;">A 사원번호</span>
+            <span style="padding:3px 8px;background:rgba(79,142,247,0.12);border:1px solid rgba(79,142,247,0.25);border-radius:4px;font-size:10px;color:var(--accent-blue);font-weight:600;">B 성명 *</span>
+            <span style="padding:3px 8px;background:rgba(79,142,247,0.2);border:1px solid rgba(79,142,247,0.35);border-radius:4px;font-size:10px;color:var(--accent-blue);font-weight:700;">C 기본급 *</span>
+            <span style="padding:3px 8px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.25);border-radius:4px;font-size:10px;color:var(--accent-teal);font-weight:600;">D 식대</span>
+            <span style="padding:3px 8px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.25);border-radius:4px;font-size:10px;color:var(--accent-teal);font-weight:600;">E 자가운전보조금</span>
+            <span style="padding:3px 8px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.25);border-radius:4px;font-size:10px;color:var(--accent-teal);font-weight:600;">F 육아수당</span>
+            <span style="padding:3px 8px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.25);border-radius:4px;font-size:10px;color:var(--accent-teal);font-weight:600;">G 연구수당</span>
+            <span style="padding:3px 8px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:4px;font-size:10px;color:var(--accent-amber);font-weight:600;">H 연장수당</span>
+            <span style="padding:3px 8px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:4px;font-size:10px;color:var(--accent-amber);font-weight:600;">I 휴일근로수당</span>
+          </div>
+          <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">
+            🟦 필수 &nbsp;|&nbsp; 🟩 비과세 수당 (한도 내 보험료 제외) &nbsp;|&nbsp; 🟧 과세 수당 (보험료 산정 포함)
+          </div>
         </div>
         <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
           <div class="upload-zone-icon">↑</div>
           <p style="font-weight:500;color:var(--text-primary)">클릭하거나 파일을 끌어다 놓으세요</p>
-          <p style="font-size:11px;margin-top:4px;">.csv 파일 지원</p>
+          <p style="font-size:11px;margin-top:4px;">.xlsx &nbsp;·&nbsp; .csv 지원</p>
         </div>
-        <input type="file" id="file-input" accept=".csv" style="display:none" onchange="handleFileUpload(event)">
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(event)">
         <div style="margin-top:16px;">
           <div class="form-row">
-            <div class="form-field"><label>년도</label><input type="number" id="upload-year" value="2025" min="2020" max="2030"></div>
-            <div class="form-field"><label>월</label><select id="upload-month"></select></div>
+            <div class="form-field"><label>귀속 년도</label><input type="number" id="upload-year" value="2025" min="2020" max="2030"></div>
+            <div class="form-field"><label>귀속 월</label><select id="upload-month"></select></div>
           </div>
         </div>
         <div id="preview-section" style="display:none;margin-top:12px;">
           <div class="section-divider"></div>
           <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:10px;">미리보기</div>
-          <div id="preview-content"></div>
+          <div id="preview-content" style="overflow-x:auto;"></div>
           <button class="primary" style="width:100%;margin-top:14px;" onclick="confirmUpload()">이 데이터로 4대보험 계산 적용</button>
         </div>
+
+        <!-- 수동 입력 -->
         <div style="margin-top:16px;">
           <div class="section-divider"></div>
           <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">수동 입력</div>
           <div class="form-row">
             <div class="form-field"><label>직원</label><select id="manual-emp"></select></div>
-            <div class="form-field"><label>기본급 (원)</label><input type="number" id="manual-salary" placeholder="예: 3000000"></div>
+            <div class="form-field"><label>사원번호</label><input type="text" id="manual-empcode" placeholder="0001"></div>
           </div>
           <div class="form-row">
+            <div class="form-field"><label>기본급 (원)</label><input type="number" id="manual-salary" placeholder="예: 3,000,000"></div>
             <div class="form-field"><label>식대 (원)</label><input type="number" id="manual-meal" value="0"></div>
-            <div class="form-field"><label>교통비 (원)</label><input type="number" id="manual-transport" value="0"></div>
           </div>
           <div class="form-row">
-            <div class="form-field"><label>기타수당 (원)</label><input type="number" id="manual-other" value="0"></div>
+            <div class="form-field"><label>자가운전보조금 (원)</label><input type="number" id="manual-transport" value="0"></div>
+            <div class="form-field"><label>육아수당 (원)</label><input type="number" id="manual-childcare" value="0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>연구수당 (원)</label><input type="number" id="manual-research" value="0"></div>
+            <div class="form-field"><label>연장수당 (원)</label><input type="number" id="manual-overtime" value="0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>휴일근로수당 (원)</label><input type="number" id="manual-holiday" value="0"></div>
             <div class="form-field"><label>대상 년월</label>
               <div style="display:flex;gap:8px;">
                 <input type="number" id="manual-year" value="2025" style="width:80px">
@@ -1524,10 +1552,18 @@ button.small {
       </div>
       <div class="card">
         <div class="card-header"><div class="card-title">비과세 항목 설정</div></div>
+        <div class="rates-note" style="margin-bottom:14px;">
+          <p>각 수당의 비과세 한도를 초과하는 금액은 보험료 산정 기준에 포함됩니다.</p>
+        </div>
         <div class="form-row">
           <div class="form-field"><label>식대 비과세 한도 (월, 원)</label><input type="number" id="meal-limit" value="200000"></div>
-          <div class="form-field"><label>교통비 비과세 한도 (월, 원)</label><input type="number" id="transport-limit" value="200000"></div>
+          <div class="form-field"><label>자가운전보조금 비과세 한도 (월, 원)</label><input type="number" id="transport-limit" value="200000"></div>
         </div>
+        <div class="form-row">
+          <div class="form-field"><label>육아수당 비과세 한도 (월, 원)</label><input type="number" id="childcare-limit" value="100000"></div>
+          <div class="form-field"><label>연구수당 비과세 한도 (월, 원)</label><input type="number" id="research-limit" value="200000"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">연장수당·휴일근로수당은 전액 과세(보험료 산정 포함)</div>
       </div>
     </div>
 
@@ -1987,25 +2023,21 @@ function setupAuthListener() {
 
 /** records 전체를 flat 배열로 변환 */
 function buildExportRows() {
-  const rows = [];
-  const header = ['년월','이름','기본급','식대','교통비','기타수당','지급합계',
+  const header = ['년월','사원번호','이름','기본급','식대','자가운전보조금','육아수당','연구수당','연장수당','휴일근로수당','지급합계',
                   '국민연금(직원)','건강보험(직원)','장기요양(직원)','고용보험(직원)','직원부담합계',
-                  '국민연금(회사)','건강보험(회사)','장기요양(회사)','고용보험(회사)','산재보험(회사)','회사부담합계',
-                  '총부담합계'];
-  rows.push(header);
+                  '국민연금(회사)','건강보험(회사)','장기요양(회사)','고용보험(회사)','산재보험(회사)','회사부담합계','총부담합계',
+                  '보수월액'];
+  const rows = [header];
   Object.keys(records).sort().forEach(mk => {
-    const [y,m] = mk.split('-');
-    const label = `${y}년 ${parseInt(m)}월`;
+    const [y,m] = mk.split('-'); const label = `${y}년 ${parseInt(m)}월`;
     (records[mk] || []).forEach(r => {
       const i = r.ins;
-      const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.other||0);
-      rows.push([
-        label, r.name,
-        r.salary, r.meal||0, r.transport||0, r.other||0, gross,
+      const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.overtime||0)+(r.holiday||0);
+      rows.push([label, r.empCode||'', r.name,
+        r.salary, r.meal||0, r.transport||0, r.childcare||0, r.research||0, r.overtime||0, r.holiday||0, gross,
         i.pension.emp, i.health.emp, i.longcare.emp, i.employ.emp, i.totalEmp,
         i.pension.comp, i.health.comp, i.longcare.comp, i.employ.comp, i.accident.comp, i.totalComp,
-        i.totalEmp + i.totalComp
-      ]);
+        i.totalEmp+i.totalComp, i.base]);
     });
   });
   return rows;
@@ -2013,23 +2045,20 @@ function buildExportRows() {
 
 /** 특정 월 rows만 반환 */
 function buildMonthRows(mk) {
-  const [y,m] = mk.split('-');
-  const label  = `${y}년 ${parseInt(m)}월`;
-  const header = ['년월','이름','기본급','식대','교통비','기타수당','지급합계',
+  const [y,m] = mk.split('-'); const label = `${y}년 ${parseInt(m)}월`;
+  const header = ['년월','사원번호','이름','기본급','식대','자가운전보조금','육아수당','연구수당','연장수당','휴일근로수당','지급합계',
                   '국민연금(직원)','건강보험(직원)','장기요양(직원)','고용보험(직원)','직원부담합계',
-                  '국민연금(회사)','건강보험(회사)','장기요양(회사)','고용보험(회사)','산재보험(회사)','회사부담합계',
-                  '총부담합계'];
+                  '국민연금(회사)','건강보험(회사)','장기요양(회사)','고용보험(회사)','산재보험(회사)','회사부담합계','총부담합계',
+                  '보수월액'];
   const rows = [header];
   (records[mk] || []).forEach(r => {
     const i = r.ins;
-    const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.other||0);
-    rows.push([
-      label, r.name,
-      r.salary, r.meal||0, r.transport||0, r.other||0, gross,
+    const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.overtime||0)+(r.holiday||0);
+    rows.push([label, r.empCode||'', r.name,
+      r.salary, r.meal||0, r.transport||0, r.childcare||0, r.research||0, r.overtime||0, r.holiday||0, gross,
       i.pension.emp, i.health.emp, i.longcare.emp, i.employ.emp, i.totalEmp,
       i.pension.comp, i.health.comp, i.longcare.comp, i.employ.comp, i.accident.comp, i.totalComp,
-      i.totalEmp + i.totalComp
-    ]);
+      i.totalEmp+i.totalComp, i.base]);
   });
   return rows;
 }
@@ -2123,15 +2152,26 @@ function switchTab(name, btn) {
 // expose to HTML onclick
 window.switchTab = switchTab;
 
-function calcInsurance(salary, meal=0, transport=0, other=0) {
-  const mealLimit      = parseInt(document.getElementById('meal-limit').value)      || 200000;
-  const transportLimit = parseInt(document.getElementById('transport-limit').value) || 200000;
+function calcInsurance(salary, meal=0, transport=0, childcare=0, research=0, overtime=0, holiday=0) {
+  const mealLimit      = parseInt(document.getElementById('meal-limit')?.value)      || 200000;
+  const transportLimit = parseInt(document.getElementById('transport-limit')?.value) || 200000;
+  const childcareLimit = parseInt(document.getElementById('childcare-limit')?.value) || 100000;
+  const researchLimit  = parseInt(document.getElementById('research-limit')?.value)  || 200000;
+
+  // 비과세 초과분만 보수월액에 포함
   const taxableMeal      = Math.max(0, meal      - mealLimit);
   const taxableTransport = Math.max(0, transport - transportLimit);
-  const base        = salary + taxableMeal + taxableTransport + other;
+  const taxableChildcare = Math.max(0, childcare - childcareLimit);
+  const taxableResearch  = Math.max(0, research  - researchLimit);
+  // 연장·휴일수당은 전액 과세
+  const base = salary + taxableMeal + taxableTransport + taxableChildcare + taxableResearch + overtime + holiday;
+
+  // 국민연금: 기준소득월액 = 기본급만 적용 (상한 590만, 하한 35만)
   const basePension = Math.min(Math.max(salary, RATES.pension.salaryMin), RATES.pension.salaryMax);
   const pension_e = Math.round(basePension * RATES.pension.emp);
   const pension_c = Math.round(basePension * RATES.pension.comp);
+
+  // 건강·고용보험: 보수월액 = base
   const health_e  = Math.round(base * RATES.health.emp);
   const health_c  = Math.round(base * RATES.health.comp);
   const lc_e      = Math.round(health_e * RATES.longcare.rate);
@@ -2139,6 +2179,7 @@ function calcInsurance(salary, meal=0, transport=0, other=0) {
   const employ_e  = Math.round(base * RATES.employ.emp);
   const employ_c  = Math.round(base * RATES.employ.comp);
   const accident_c= Math.round(base * RATES.accident.comp);
+
   return {
     pension:  { emp: pension_e, comp: pension_c },
     health:   { emp: health_e,  comp: health_c  },
@@ -2309,22 +2350,120 @@ function handleFileUpload(e) { const f = e.target.files[0]; if (f) processFile(f
 window.onDragOver = onDragOver; window.onDragLeave = onDragLeave;
 window.onDrop = onDrop; window.handleFileUpload = handleFileUpload;
 
-function processFile(file) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const rows = e.target.result.split('\n').filter(l=>l.trim()).map(l=>{
-      const p = l.split(',');
-      return { name:(p[0]||'').trim(), salary:parseInt(p[1])||0, meal:parseInt(p[2])||0, transport:parseInt(p[3])||0, other:parseInt(p[4])||0 };
-    }).filter(r=>r.name);
-    pendingUpload = rows;
-    let html = '<table class="ins-table"><thead><tr><th>이름</th><th>기본급</th><th>식대</th><th>교통비</th><th>기타</th></tr></thead><tbody>';
-    rows.forEach(r => { html += `<tr><td style="text-align:left">${r.name}</td><td>${fmt(r.salary)}</td><td>${fmt(r.meal)}</td><td>${fmt(r.transport)}</td><td>${fmt(r.other)}</td></tr>`; });
-    html += '</tbody></table>';
-    document.getElementById('preview-content').innerHTML = html;
-    document.getElementById('preview-section').style.display = 'block';
-  };
-  reader.readAsText(file, 'UTF-8');
+/** CSV 한 줄 → 셀 배열 파싱 (따옴표·쉼표 대응) */
+function parseCSVLine(line) {
+  const cells = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+    else { cur += c; }
+  }
+  cells.push(cur.trim());
+  return cells;
 }
+
+/** raw row 배열(9개) → 급여 데이터 객체 변환 */
+function rowToPayroll(cols) {
+  const n = v => parseInt(String(v).replace(/[^0-9.-]/g,'')) || 0;
+  const s = v => String(v||'').trim();
+  return {
+    empCode:   s(cols[0]),   // A: 사원번호
+    name:      s(cols[1]),   // B: 성명
+    salary:    n(cols[2]),   // C: 기본급
+    meal:      n(cols[3]),   // D: 식대
+    transport: n(cols[4]),   // E: 자가운전보조금
+    childcare: n(cols[5]),   // F: 육아수당
+    research:  n(cols[6]),   // G: 연구수당
+    overtime:  n(cols[7]),   // H: 연장수당
+    holiday:   n(cols[8]),   // I: 휴일근로수당
+  };
+}
+
+/** 미리보기 테이블 HTML 생성 */
+function buildPreviewTable(rows) {
+  const cols = ['사원번호','성명','기본급','식대','자가운전\n보조금','육아수당','연구수당','연장수당','휴일근로\n수당'];
+  let html = '<table class="ins-table" style="font-size:11px;"><thead><tr>' +
+    cols.map(c=>`<th style="white-space:pre-line;text-align:center;">${c}</th>`).join('') +
+    '</tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr>
+      <td style="text-align:left;font-family:var(--font-mono)">${r.empCode||'—'}</td>
+      <td style="text-align:left;color:var(--text-primary);font-weight:500;">${r.name}</td>
+      <td>${fmt(r.salary)}</td><td>${fmt(r.meal)}</td>
+      <td>${fmt(r.transport)}</td><td>${fmt(r.childcare)}</td>
+      <td>${fmt(r.research)}</td><td>${fmt(r.overtime)}</td>
+      <td>${fmt(r.holiday)}</td>
+    </tr>`;
+  });
+  return html + '</tbody></table>';
+}
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (ext === 'xlsx' || ext === 'xls') {
+    // ── Excel 처리 (SheetJS) ──
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const wb   = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: 0 });
+        // 헤더 행 자동 감지: 성명/이름 포함 행 찾기
+        let startRow = 0;
+        for (let i = 0; i < Math.min(5, data.length); i++) {
+          const row = data[i].map(v => String(v||''));
+          if (row.some(v => v.includes('성명') || v.includes('이름'))) { startRow = i + 1; break; }
+        }
+        const rows = data.slice(startRow)
+          .map(r => rowToPayroll(r))
+          .filter(r => r.name && r.salary > 0);
+        if (!rows.length) { alert('유효한 데이터가 없습니다. 헤더 행 다음부터 데이터가 있는지 확인하세요.'); return; }
+        pendingUpload = rows;
+        document.getElementById('preview-content').innerHTML = buildPreviewTable(rows);
+        document.getElementById('preview-section').style.display = 'block';
+      } catch(err) { alert('엑셀 파일 읽기 오류: ' + err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+
+  } else {
+    // ── CSV 처리 ──
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+      // 헤더 행 감지
+      let startLine = 0;
+      if (lines[0] && (lines[0].includes('성명') || lines[0].includes('이름') || lines[0].includes('사원'))) {
+        startLine = 1;
+      }
+      const rows = lines.slice(startLine)
+        .map(l => rowToPayroll(parseCSVLine(l)))
+        .filter(r => r.name && r.salary > 0);
+      if (!rows.length) { alert('유효한 데이터가 없습니다.'); return; }
+      pendingUpload = rows;
+      document.getElementById('preview-content').innerHTML = buildPreviewTable(rows);
+      document.getElementById('preview-section').style.display = 'block';
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+}
+
+/** 서식 템플릿(Excel) 다운로드 */
+function downloadPayrollTemplate() {
+  const header = ['사원번호','성명','기본급','식대','자가운전보조금','육아수당','연구수당','연장수당','휴일근로수당'];
+  const sample = [
+    ['0001','홍길동',3000000,200000,200000,0,0,0,0],
+    ['0002','김철수',2500000,200000,0,100000,200000,150000,0],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet([header, ...sample]);
+  // 헤더 스타일: 열 너비
+  ws['!cols'] = header.map((h,i) => ({ wch: Math.max(h.length+2, 12) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '급여대장');
+  XLSX.writeFile(wb, `급여대장_서식_${new Date().getFullYear()}.xlsx`);
+}
+window.downloadPayrollTemplate = downloadPayrollTemplate;
 
 async function confirmUpload() {
   if (!pendingUpload || !pendingUpload.length) return;
@@ -2334,14 +2473,28 @@ async function confirmUpload() {
   if (!records[mk]) records[mk] = [];
   const processed = [];
   for (const row of pendingUpload) {
-    let emp = employees.find(e => e.name === row.name && e.status === 'active');
+    let emp = employees.find(e => e.name === row.name && e.status === 'active')
+           || employees.find(e => e.empCode === row.empCode && row.empCode);
     if (!emp) {
-      emp = { id: Date.now().toString()+Math.random().toString(36).slice(2), name:row.name, joinDate:'', salary:row.salary, status:'active' };
+      emp = {
+        id: Date.now().toString()+Math.random().toString(36).slice(2),
+        empCode: row.empCode, name: row.name, joinDate: '', salary: row.salary, status: 'active'
+      };
       await fsSetEmployee(emp);
-    } else if (row.salary) { emp.salary = row.salary; await fsSetEmployee(emp); }
-    const ins = calcInsurance(row.salary, row.meal, row.transport, row.other);
-    const rec = { empId:emp.id, name:row.name, salary:row.salary, meal:row.meal, transport:row.transport, other:row.other, ins };
-    const ei  = records[mk].findIndex(r => r.name === row.name);
+    } else {
+      if (row.salary) emp.salary = row.salary;
+      if (row.empCode) emp.empCode = row.empCode;
+      await fsSetEmployee(emp);
+    }
+    const ins = calcInsurance(row.salary, row.meal, row.transport, row.childcare, row.research, row.overtime, row.holiday);
+    const rec = {
+      empId: emp.id, empCode: row.empCode||emp.empCode||'',
+      name: row.name, salary: row.salary,
+      meal: row.meal, transport: row.transport,
+      childcare: row.childcare, research: row.research,
+      overtime: row.overtime, holiday: row.holiday, ins
+    };
+    const ei = records[mk].findIndex(r => r.name === row.name);
     if (ei >= 0) records[mk][ei] = rec; else records[mk].push(rec);
     processed.push(rec);
   }
@@ -2356,19 +2509,23 @@ window.confirmUpload = confirmUpload;
 
 async function addManualEntry() {
   const empId     = document.getElementById('manual-emp').value;
+  const empCode   = document.getElementById('manual-empcode').value.trim();
   const salary    = parseInt(document.getElementById('manual-salary').value)    || 0;
   const meal      = parseInt(document.getElementById('manual-meal').value)      || 0;
   const transport = parseInt(document.getElementById('manual-transport').value) || 0;
-  const other     = parseInt(document.getElementById('manual-other').value)     || 0;
+  const childcare = parseInt(document.getElementById('manual-childcare').value) || 0;
+  const research  = parseInt(document.getElementById('manual-research').value)  || 0;
+  const overtime  = parseInt(document.getElementById('manual-overtime').value)  || 0;
+  const holiday   = parseInt(document.getElementById('manual-holiday').value)   || 0;
   const year      = parseInt(document.getElementById('manual-year').value);
   const month     = parseInt(document.getElementById('manual-month').value);
   if (!empId)  { alert('직원을 선택해주세요.');  return; }
   if (!salary) { alert('기본급을 입력해주세요.'); return; }
   const emp = employees.find(e => e.id === empId); if (!emp) return;
-  const ins = calcInsurance(salary, meal, transport, other);
+  const ins = calcInsurance(salary, meal, transport, childcare, research, overtime, holiday);
   const mk  = `${year}-${String(month).padStart(2,'0')}`;
   if (!records[mk]) records[mk] = [];
-  const rec = { empId, name:emp.name, salary, meal, transport, other, ins };
+  const rec = { empId, empCode: empCode||emp.empCode||'', name: emp.name, salary, meal, transport, childcare, research, overtime, holiday, ins };
   const ei  = records[mk].findIndex(r => r.empId === empId);
   if (ei >= 0) records[mk][ei] = rec; else records[mk].push(rec);
   await fsSavePayroll(mk);
@@ -2378,9 +2535,15 @@ window.addManualEntry = addManualEntry;
 
 function showCalcPreview(recs) {
   document.getElementById('calc-preview').style.display = 'block';
-  document.getElementById('calc-result-content').innerHTML = recs.map(r => `
+  document.getElementById('calc-result-content').innerHTML = recs.map(r => {
+    const gross = r.salary + (r.meal||0) + (r.transport||0) + (r.childcare||0) + (r.research||0) + (r.overtime||0) + (r.holiday||0);
+    return `
     <div style="margin-bottom:14px;">
-      <div style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">${r.name} — ${fmt(r.salary)}원</div>
+      <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">${r.empCode ? '['+r.empCode+'] ' : ''}${r.name}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+        기본급 ${fmt(r.salary)} + 식대 ${fmt(r.meal||0)} + 자가운전 ${fmt(r.transport||0)} + 육아 ${fmt(r.childcare||0)} + 연구 ${fmt(r.research||0)} + 연장 ${fmt(r.overtime||0)} + 휴일 ${fmt(r.holiday||0)} = <strong style="color:var(--text-primary)">지급 ${fmt(gross)}원</strong>
+      </div>
+      <div style="font-size:11px;color:var(--accent-blue);margin-bottom:6px;">보수월액(보험료 산정기준): ${fmt(r.ins.base)}원</div>
       <div class="result-row"><span class="result-label">국민연금 (직원/회사)</span><span class="result-value">${fmt(r.ins.pension.emp)} / ${fmt(r.ins.pension.comp)}원</span></div>
       <div class="result-row"><span class="result-label">건강+장기요양 (직원/회사)</span><span class="result-value">${fmt(r.ins.health.emp+r.ins.longcare.emp)} / ${fmt(r.ins.health.comp+r.ins.longcare.comp)}원</span></div>
       <div class="result-row"><span class="result-label">고용보험 (직원/회사)</span><span class="result-value">${fmt(r.ins.employ.emp)} / ${fmt(r.ins.employ.comp)}원</span></div>
@@ -2388,7 +2551,8 @@ function showCalcPreview(recs) {
       <div class="section-divider"></div>
       <div class="total-row"><span>직원 부담</span><span>${fmt(r.ins.totalEmp)}원</span></div>
       <div class="total-row"><span>회사 부담</span><span>${fmt(r.ins.totalComp)}원</span></div>
-    </div>`).join('<div class="section-divider"></div>');
+    </div>`;
+  }).join('<div class="section-divider"></div>');
 }
 
 function renderHistory() {
@@ -2480,29 +2644,38 @@ function r_nameOrFirst(targets) { return targets.length===1 ? targets[0].name : 
 function buildSlipHTML(r, year, month, pageBreak) {
   const emp      = employees.find(e => e.id === r.empId) || { name:r.name, joinDate:'-', status:'active' };
   const ins      = r.ins;
-  const grossPay = r.salary + (r.meal||0) + (r.transport||0) + (r.other||0);
+  const grossPay = r.salary + (r.meal||0) + (r.transport||0) + (r.childcare||0) + (r.research||0) + (r.overtime||0) + (r.holiday||0);
   const netPay   = grossPay - ins.totalEmp;
   const today    = new Date();
   const payDate  = `${year}년 ${month}월 ${new Date(year,month,0).getDate()}일`;
   const pb       = pageBreak ? 'style="page-break-before:always;border-top:2px solid #eee;margin-top:0;padding-top:2.5rem;"' : '';
+  const empCodeStr = r.empCode || emp.empCode || '';
   return `<div class="slip-body" ${pb}>
   <div class="slip-co-name">(주)와플랩</div>
   <div class="slip-title">급여명세서</div>
   <div class="slip-period">${year}년 ${month}월 귀속 · 지급일 ${payDate}</div>
   <div class="slip-meta">
     <div class="slip-meta-cell"><div class="slip-meta-key">성명</div><div class="slip-meta-val">${r.name}</div></div>
+    <div class="slip-meta-cell"><div class="slip-meta-key">사원번호</div><div class="slip-meta-val">${empCodeStr||'—'}</div></div>
     <div class="slip-meta-cell"><div class="slip-meta-key">입사일</div><div class="slip-meta-val">${emp.joinDate||'-'}</div></div>
     <div class="slip-meta-cell"><div class="slip-meta-key">재직상태</div><div class="slip-meta-val">${emp.status==='active'?'재직':emp.status==='leave'?'휴직':'퇴직'}</div></div>
     <div class="slip-meta-cell"><div class="slip-meta-key">발행일</div><div class="slip-meta-val">${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일</div></div>
+    <div class="slip-meta-cell"><div class="slip-meta-key">보수월액</div><div class="slip-meta-val">${fmt(ins.base)}원</div></div>
   </div>
   <div class="slip-grid">
     <div>
       <div class="slip-section-title">지급 내역</div>
       <div class="slip-line"><span class="slip-line-key">기본급</span><span class="slip-line-val">${fmt(r.salary)}원</span></div>
-      ${r.meal?`<div class="slip-line"><span class="slip-line-key">식대</span><span class="slip-line-val">${fmt(r.meal)}원</span></div>`:''}
-      ${r.transport?`<div class="slip-line"><span class="slip-line-key">교통비</span><span class="slip-line-val">${fmt(r.transport)}원</span></div>`:''}
-      ${r.other?`<div class="slip-line"><span class="slip-line-key">기타수당</span><span class="slip-line-val">${fmt(r.other)}원</span></div>`:''}
-      <div class="slip-line" style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;"><span class="slip-line-key" style="font-weight:700;color:#111;">지급 합계</span><span class="slip-line-val">${fmt(grossPay)}원</span></div>
+      ${r.meal    ? `<div class="slip-line"><span class="slip-line-key">식대</span><span class="slip-line-val">${fmt(r.meal)}원</span></div>` : ''}
+      ${r.transport?`<div class="slip-line"><span class="slip-line-key">자가운전보조금</span><span class="slip-line-val">${fmt(r.transport)}원</span></div>` : ''}
+      ${r.childcare?`<div class="slip-line"><span class="slip-line-key">육아수당</span><span class="slip-line-val">${fmt(r.childcare)}원</span></div>` : ''}
+      ${r.research ?`<div class="slip-line"><span class="slip-line-key">연구수당</span><span class="slip-line-val">${fmt(r.research)}원</span></div>` : ''}
+      ${r.overtime ?`<div class="slip-line"><span class="slip-line-key">연장수당</span><span class="slip-line-val">${fmt(r.overtime)}원</span></div>` : ''}
+      ${r.holiday  ?`<div class="slip-line"><span class="slip-line-key">휴일근로수당</span><span class="slip-line-val">${fmt(r.holiday)}원</span></div>` : ''}
+      <div class="slip-line" style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;">
+        <span class="slip-line-key" style="font-weight:700;color:#111;">지급 합계</span>
+        <span class="slip-line-val">${fmt(grossPay)}원</span>
+      </div>
     </div>
     <div>
       <div class="slip-section-title">공제 내역 (직원 부담)</div>
@@ -2510,7 +2683,10 @@ function buildSlipHTML(r, year, month, pageBreak) {
       <div class="slip-line"><span class="slip-line-key">건강보험</span><span class="slip-line-val">${fmt(ins.health.emp)}원</span></div>
       <div class="slip-line"><span class="slip-line-key">장기요양보험</span><span class="slip-line-val">${fmt(ins.longcare.emp)}원</span></div>
       <div class="slip-line"><span class="slip-line-key">고용보험</span><span class="slip-line-val">${fmt(ins.employ.emp)}원</span></div>
-      <div class="slip-line" style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;"><span class="slip-line-key" style="font-weight:700;color:#111;">공제 합계</span><span class="slip-line-val">${fmt(ins.totalEmp)}원</span></div>
+      <div class="slip-line" style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;">
+        <span class="slip-line-key" style="font-weight:700;color:#111;">공제 합계</span>
+        <span class="slip-line-val">${fmt(ins.totalEmp)}원</span>
+      </div>
     </div>
   </div>
   <div class="slip-total-bar">
