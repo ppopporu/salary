@@ -3529,9 +3529,6 @@ function renderSlipDetail(mk, key) {
     <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">보수월액: ${fmt(ins.base)}원${r.insManual ? ' · <span style="color:var(--accent-amber)">보험료 수동입력</span>' : ''}</div>
   `;
 
-  // 공제 배열 초기화
-  slipDeductions = [];
-
   const card = document.getElementById('slip-detail-card');
   document.getElementById('slip-detail-content').innerHTML = html;
   card.style.display = 'block';
