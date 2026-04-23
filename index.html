@@ -3254,19 +3254,47 @@ function refreshSlipPanel() {
   const month = parseInt(document.getElementById('slip-month').value) || currentMonth;
   const mk    = `${year}-${String(month).padStart(2,'0')}`;
   const recs  = records[mk] || [];
+
+  // ── onSnapshot으로 인한 재렌더 시 선택 상태 복원을 위해 현재 상태 기억
+  const prevKey = slipDetailKey;
+  const prevMk  = slipDetailMk;
+  const shouldRestore = !!(prevKey && prevMk === mk);
+
   selectedEmpIds.clear();
-  // 상세 카드 숨기기
-  const dc = document.getElementById('slip-detail-card');
-  if (dc) dc.style.display = 'none';
   const grid = document.getElementById('slip-emp-grid');
-  if (!recs.length) { grid.innerHTML = '<div class="empty-state">이 월의 급여 데이터가 없습니다.</div>'; return; }
+
+  if (!recs.length) {
+    grid.innerHTML = '<div class="empty-state">이 월의 급여 데이터가 없습니다.</div>';
+    const dc = document.getElementById('slip-detail-card');
+    if (dc) dc.style.display = 'none';
+    return;
+  }
+
   grid.innerHTML = recs.map(r => {
     const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.bonus||0)+(r.otherNontax||0)+(r.overtime||0)+(r.holiday||0);
-    return `<div class="emp-chip" id="chip-${r.empId||r.name}" onclick="selectEmpChip('${encodeURIComponent(r.empId||r.name)}','${mk}',this)">
+    const key = r.empId||r.name;
+    const isSelected = shouldRestore && key === prevKey;
+    if (isSelected) selectedEmpIds.add(key);
+    return `<div class="emp-chip ${isSelected ? 'selected' : ''}" id="chip-${key}"
+      onclick="selectEmpChip('${encodeURIComponent(key)}','${mk}',this)">
       <div class="emp-chip-name">${r.name}</div>
       <div class="emp-chip-sub">${fmt(gross)}원</div>
     </div>`;
   }).join('');
+
+  // 이전 상세 카드 복원 (선택된 직원이 있고 같은 월인 경우)
+  if (shouldRestore) {
+    const stillExists = recs.find(r => (r.empId||r.name) === prevKey);
+    if (stillExists) {
+      renderSlipDetail(prevMk, prevKey);  // 최신 데이터로 재렌더
+    } else {
+      const dc = document.getElementById('slip-detail-card');
+      if (dc) dc.style.display = 'none';
+    }
+  } else {
+    const dc = document.getElementById('slip-detail-card');
+    if (dc) dc.style.display = 'none';
+  }
 }
 
 /** 직원 칩 클릭 — 선택 토글 + 상세 표시 */
@@ -3366,16 +3394,24 @@ async function saveSlipDeductions() {
   const idx  = recs.findIndex(x => (x.empId||x.name) === slipDetailKey);
   if (idx < 0) { showToast('⚠️ 데이터를 찾을 수 없습니다.', 'info'); return; }
 
+  // 버튼 비활성화 (중복 클릭 방지)
+  const btn = document.querySelector('[onclick="saveSlipDeductions()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+
   const cleaned = getSlipDeductionsFromDOM().filter(d => d.name && d.amount > 0);
+  // 로컬 records 먼저 업데이트
   records[slipDetailMk][idx] = { ...recs[idx], extraDeductions: cleaned };
+
   try {
     await fsSavePayroll(slipDetailMk);
+    // onSnapshot이 refreshSlipPanel을 호출하여 상세카드를 자동 갱신함
+    // 토스트는 onSnapshot 완료와 관계없이 즉시 표시
     showToast('✅ 공제항목이 저장되었습니다.', 'success');
-    renderSlipDetail(slipDetailMk, slipDetailKey);  // 상세 카드 재렌더
-    renderHistory();                                  // 월별기록 갱신
   } catch(e) {
     console.error('공제항목 저장 오류:', e);
-    alert('저장 중 오류가 발생했습니다: ' + e.message);
+    showToast('❌ 저장 실패: ' + e.message, 'danger');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 공제항목 저장'; }
   }
 }
 window.saveSlipDeductions = saveSlipDeductions;
