@@ -1224,6 +1224,102 @@ button.small {
   transition: all .15s;
 }
 .deduct-row .deduct-del:hover { background: var(--accent-rose-dim); }
+
+/* ── 월별기록 필터 바 ── */
+.hist-filter-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 16px; margin-bottom: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+.hist-filter-label {
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  letter-spacing: .08em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.hist-filter-input {
+  width: 80px; height: 36px;
+  padding: 0 12px;
+  font-size: 14px; font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+}
+.hist-filter-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(79,142,247,.12);
+}
+.hist-filter-select {
+  height: 36px; padding: 0 10px;
+  font-size: 14px; font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  transition: border-color .15s;
+  outline: none; cursor: pointer;
+  min-width: 80px;
+}
+.hist-filter-select:focus { border-color: var(--accent-blue); }
+.hist-query-btn {
+  height: 36px; padding: 0 18px;
+  font-size: 13px; font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--accent-blue);
+  color: #fff;
+  border: none; border-radius: var(--radius-md);
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(79,142,247,.3);
+  transition: all .15s;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.hist-query-btn:hover { background: #6A9EFA; box-shadow: 0 4px 14px rgba(79,142,247,.4); transform: translateY(-1px); }
+.hist-reset-btn {
+  height: 36px; padding: 0 14px;
+  font-size: 12px; font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
+  background: transparent; color: var(--text-secondary);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer; white-space: nowrap; transition: all .15s;
+}
+.hist-reset-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-strong); }
+
+/* ── 급여명세서 뷰어 (월별기록용) ── */
+#hist-slip-viewer {
+  display: none;
+  margin-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 20px;
+}
+#hist-slip-viewer.open { display: block; animation: fadeIn 0.3s ease; }
+.hist-slip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.hist-emp-chip {
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer; transition: all .15s;
+}
+.hist-emp-chip:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+.hist-emp-chip.selected {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-dim);
+  box-shadow: 0 0 0 1px var(--accent-blue);
+}
+.hist-emp-chip-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.hist-emp-chip-sub  { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: var(--font-mono); }
 </style>
 </head>
 <body>
@@ -1604,46 +1700,72 @@ button.small {
       <div class="page-header">
         <div class="page-header-eyebrow">Records</div>
         <div class="page-title">월별 기록</div>
-        <div class="page-desc">4대보험 납부 기록 조회 및 급여명세서 출력</div>
+        <div class="page-desc">기간을 선택하고 조회하면 급여명세서를 확인할 수 있습니다</div>
       </div>
-      <div class="card">
-        <!-- 필터 + 내보내기 행 -->
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;">
-          <input type="number" id="hist-filter-year" placeholder="년도" min="2020" max="2035"
-            style="width:68px;height:32px;padding:0 8px;font-size:12px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-elevated);color:var(--text-primary);"
-            oninput="renderHistory()">
-          <select id="hist-filter-month"
-            style="width:72px;height:32px;padding:0 8px;font-size:12px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-elevated);color:var(--text-primary);"
-            onchange="renderHistory()">
-            <option value="">전체월</option>
-            <option value="01">1월</option><option value="02">2월</option>
-            <option value="03">3월</option><option value="04">4월</option>
-            <option value="05">5월</option><option value="06">6월</option>
-            <option value="07">7월</option><option value="08">8월</option>
-            <option value="09">9월</option><option value="10">10월</option>
-            <option value="11">11월</option><option value="12">12월</option>
-          </select>
-          <button onclick="clearHistFilter()"
-            style="height:32px;padding:0 12px;font-size:12px;white-space:nowrap;">전체 보기</button>
-          <div style="flex:1;"></div>
-          <div class="export-btns">
-            <button class="btn-export-csv" onclick="exportFilteredCSV()">
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
-              CSV
-            </button>
-            <button class="btn-export-xlsx" onclick="exportFilteredXLSX()">
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
-              Excel
-            </button>
-          </div>
+
+      <!-- 필터 바 -->
+      <div class="hist-filter-bar">
+        <span class="hist-filter-label">조회 기간</span>
+        <input type="number" id="hist-filter-year" class="hist-filter-input"
+          placeholder="년도" min="2020" max="2035">
+        <span style="font-size:13px;color:var(--text-muted);">년</span>
+        <select id="hist-filter-month" class="hist-filter-select">
+          <option value="">전체</option>
+          <option value="01">1월</option><option value="02">2월</option>
+          <option value="03">3월</option><option value="04">4월</option>
+          <option value="05">5월</option><option value="06">6월</option>
+          <option value="07">7월</option><option value="08">8월</option>
+          <option value="09">9월</option><option value="10">10월</option>
+          <option value="11">11월</option><option value="12">12월</option>
+        </select>
+        <span style="font-size:13px;color:var(--text-muted);">월</span>
+        <button class="hist-query-btn" onclick="queryHistory()">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/>
+          </svg>
+          조회
+        </button>
+        <button class="hist-reset-btn" onclick="resetHistFilter()">전체 보기</button>
+        <div style="flex:1;"></div>
+        <div class="export-btns">
+          <button class="btn-export-csv" onclick="exportFilteredCSV()">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+            CSV
+          </button>
+          <button class="btn-export-xlsx" onclick="exportFilteredXLSX()">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+            Excel
+          </button>
         </div>
-        <!-- 조회 결과 요약 -->
-        <div id="hist-summary" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary);"></div>
+      </div>
+
+      <!-- 조회 결과 카드 -->
+      <div class="card">
+        <!-- 요약 배너 -->
+        <div id="hist-summary" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary);"></div>
+        <!-- 테이블 -->
         <div id="history-content">
           <div class="empty-state">
             <div class="empty-state-icon">📁</div>
-            아직 기록된 데이터가 없습니다.
+            년도/월을 선택하고 조회 버튼을 클릭하세요.
           </div>
+        </div>
+
+        <!-- 급여명세서 뷰어 (조회 후 표시) -->
+        <div id="hist-slip-viewer">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text-primary);" id="hist-slip-viewer-title">급여명세서 조회</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">직원을 클릭하면 명세서를 미리볼 수 있습니다</div>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="small primary" onclick="printAllHistSlips()">🖨 전체 인쇄</button>
+              <button class="small" onclick="closeHistSlipViewer()">✕ 닫기</button>
+            </div>
+          </div>
+          <div class="hist-slip-grid" id="hist-slip-chips"></div>
+          <!-- 선택 직원 상세 (slip-detail 카드 재사용) -->
+          <div id="hist-slip-detail" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border-subtle);"></div>
         </div>
       </div>
     </div>
@@ -2349,6 +2471,15 @@ function initUI() {
   document.getElementById('slip-year').value   = currentYear;
   document.getElementById('slip-year').addEventListener('change', refreshSlipPanel);
   document.getElementById('slip-month').addEventListener('change', refreshSlipPanel);
+
+  // 월별기록 기본값 — 이번달
+  const hy = document.getElementById('hist-filter-year');
+  const hm = document.getElementById('hist-filter-month');
+  if (hy) hy.value = currentYear;
+  if (hm) {
+    const mm = String(currentMonth).padStart(2,'0');
+    hm.querySelectorAll('option').forEach(o => { if (o.value === mm) o.selected = true; });
+  }
 }
 
 function init() {
@@ -2369,6 +2500,10 @@ function init() {
 }
 
 function fmt(n) { return Math.round(n).toLocaleString('ko-KR'); }
+function fmtMk(mk) {
+  const [y,m] = mk.split('-');
+  return y + '년 ' + parseInt(m) + '월';
+}
 function renderAll() {
   renderEmployees();
   renderDashboard();
@@ -2384,6 +2519,17 @@ function switchTab(name, btn) {
   document.getElementById('panel-' + name).classList.add('active');
   if (name === 'payroll') populateManualSelect();
   if (name === 'slip')    refreshSlipPanel();
+  if (name === 'history') {
+    // 필터에 값이 없으면 이번달로 설정 후 자동 조회
+    const hy = document.getElementById('hist-filter-year');
+    const hm = document.getElementById('hist-filter-month');
+    if (hy && !hy.value) hy.value = currentYear;
+    if (hm && !hm.value) {
+      const mm = String(currentMonth).padStart(2,'0');
+      hm.querySelectorAll('option').forEach(o => { if (o.value === mm) o.selected = true; });
+    }
+    queryHistory();
+  }
 }
 // expose to HTML onclick
 window.switchTab = switchTab;
@@ -3116,13 +3262,161 @@ function getHistFilter() {
     month: monthEl ? monthEl.value.trim() : '',
   };
 }
-function clearHistFilter() {
+
+/** 전체 보기 — 필터 초기화 후 재조회 */
+function resetHistFilter() {
   const y = document.getElementById('hist-filter-year');
   const m = document.getElementById('hist-filter-month');
-  if (y) y.value = ''; if (m) m.value = '';
+  if (y) y.value = '';
+  if (m) m.value = '';
+  closeHistSlipViewer();
   renderHistory();
 }
-window.clearHistFilter = clearHistFilter;
+window.resetHistFilter = resetHistFilter;
+// legacy alias
+window.clearHistFilter = resetHistFilter;
+
+/** 조회 버튼 클릭 — 필터 적용 후 결과 + 급여명세서 뷰어 표시 */
+function queryHistory() {
+  const { year, month } = getHistFilter();
+  renderHistory();        // 테이블 갱신
+
+  // 조회된 키들
+  const keys = getFilteredHistKeys();
+  if (!keys.length) { closeHistSlipViewer(); return; }
+
+  // 급여명세서 뷰어 구성
+  const viewer = document.getElementById('hist-slip-viewer');
+  const chips  = document.getElementById('hist-slip-chips');
+  const title  = document.getElementById('hist-slip-viewer-title');
+
+  const labelParts = [];
+  if (year)  labelParts.push(year + '년');
+  if (month) labelParts.push(parseInt(month) + '월');
+  title.textContent = (labelParts.length ? labelParts.join(' ') + ' ' : '') + '급여명세서 조회';
+
+  // 키별로 직원 칩 생성
+  chips.innerHTML = '';
+  let chipCount = 0;
+  keys.forEach(mk => {
+    (records[mk] || []).forEach(r => {
+      const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.bonus||0)+(r.otherNontax||0)+(r.overtime||0)+(r.holiday||0);
+      const encodedKey = encodeURIComponent(r.empId||r.name);
+      const chip = document.createElement('div');
+      chip.className = 'hist-emp-chip';
+      chip.dataset.mk  = mk;
+      chip.dataset.key = r.empId||r.name;
+      chip.innerHTML = `
+        <div class="hist-emp-chip-name">${r.name}</div>
+        <div class="hist-emp-chip-sub">${fmtMk(mk)} · ${fmt(gross)}원</div>`;
+      chip.onclick = () => selectHistChip(chip, mk, r.empId||r.name);
+      chips.appendChild(chip);
+      chipCount++;
+    });
+  });
+
+  viewer.classList.add('open');
+  viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+window.queryHistory = queryHistory;
+
+/** 히스토리 슬립 뷰어 — 칩 선택 */
+function selectHistChip(el, mk, key) {
+  document.querySelectorAll('#hist-slip-chips .hist-emp-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  renderHistSlipDetail(mk, key);
+}
+
+/** 히스토리 슬립 뷰어 — 직원 상세 렌더 */
+function renderHistSlipDetail(mk, key) {
+  const recs = records[mk] || [];
+  const r = recs.find(x => (x.empId||x.name) === key);
+  if (!r) return;
+  const [y, m] = mk.split('-');
+  const ins = r.ins;
+  const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.bonus||0)+(r.otherNontax||0)+(r.overtime||0)+(r.holiday||0);
+  const extraDeductions = r.extraDeductions || [];
+  const extraTotal = extraDeductions.reduce((s,d)=>s+(d.amount||0),0);
+  const net = gross - ins.totalEmp - extraTotal;
+  const emp = employees.find(e => e.id === r.empId) || {};
+
+  const payRows = [
+    ['기본급', r.salary, true],
+    ['식대', r.meal, false], ['자가운전보조금', r.transport, false],
+    ['육아수당', r.childcare, false], ['연구수당', r.research, false],
+    ['상여금', r.bonus, false], ['기타', r.otherNontax, false],
+    ['연장수당', r.overtime, false], ['휴일근로수당', r.holiday, false],
+  ].filter(([,v,req]) => req || v);
+
+  const detail = document.getElementById('hist-slip-detail');
+  detail.innerHTML = `
+    <div class="slip-detail-header">
+      <div>
+        <div class="slip-detail-name">${r.empCode ? '['+r.empCode+'] ' : ''}${r.name}</div>
+        <div class="slip-detail-meta">${y}년 ${parseInt(m)}월 · 입사일 ${emp.joinDate||'—'} · ${emp.status==='active'?'재직':emp.status==='leave'?'휴직':'퇴직'}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="small primary" onclick="quickSlip('${key}','${mk}')">🖨 명세서 출력</button>
+      </div>
+    </div>
+    <div class="slip-detail-grid">
+      <div>
+        <div class="slip-detail-section-title">지급 내역</div>
+        ${payRows.map(([k,v]) => `<div class="slip-detail-row"><span class="slip-detail-key">${k}</span><span class="slip-detail-val">${fmt(v)}원</span></div>`).join('')}
+        <div class="slip-detail-row" style="border-top:1px solid var(--border-default);margin-top:6px;padding-top:6px;font-weight:700;">
+          <span class="slip-detail-key" style="color:var(--text-primary);">지급 합계</span>
+          <span class="slip-detail-val">${fmt(gross)}원</span>
+        </div>
+      </div>
+      <div>
+        <div class="slip-detail-section-title">공제 내역 (직원 부담)</div>
+        <div class="slip-detail-row"><span class="slip-detail-key">국민연금</span><span class="slip-detail-val">${fmt(ins.pension.emp)}원</span></div>
+        <div class="slip-detail-row"><span class="slip-detail-key">건강보험</span><span class="slip-detail-val">${fmt(ins.health.emp)}원</span></div>
+        <div class="slip-detail-row"><span class="slip-detail-key">장기요양</span><span class="slip-detail-val">${fmt(ins.longcare.emp)}원</span></div>
+        <div class="slip-detail-row"><span class="slip-detail-key">고용보험</span><span class="slip-detail-val">${fmt(ins.employ.emp)}원</span></div>
+        ${extraDeductions.map(d=>`<div class="slip-detail-row"><span class="slip-detail-key">${d.name}</span><span class="slip-detail-val">${fmt(d.amount)}원</span></div>`).join('')}
+        <div class="slip-detail-row" style="border-top:1px solid var(--border-default);margin-top:6px;padding-top:6px;font-weight:700;">
+          <span class="slip-detail-key" style="color:var(--text-primary);">공제 합계</span>
+          <span class="slip-detail-val">${fmt(ins.totalEmp+extraTotal)}원</span>
+        </div>
+      </div>
+    </div>
+    <div class="slip-detail-net" style="margin-top:12px;">
+      <div class="slip-detail-net-label">실수령액</div>
+      <div class="slip-detail-net-val">${fmt(net)}원</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">보수월액: ${fmt(ins.base)}원 &nbsp;|&nbsp; 회사부담: ${fmt(ins.totalComp)}원</div>
+  `;
+  detail.style.display = 'block';
+}
+
+/** 슬립 뷰어 닫기 */
+function closeHistSlipViewer() {
+  const viewer = document.getElementById('hist-slip-viewer');
+  const detail = document.getElementById('hist-slip-detail');
+  if (viewer) viewer.classList.remove('open');
+  if (detail) detail.style.display = 'none';
+}
+window.closeHistSlipViewer = closeHistSlipViewer;
+
+/** 조회된 전체 직원 명세서 인쇄 */
+function printAllHistSlips() {
+  const keys = getFilteredHistKeys();
+  if (!keys.length) { alert('조회된 데이터가 없습니다.'); return; }
+  const allRecs = [];
+  keys.forEach(mk => {
+    const [y,m] = mk.split('-');
+    (records[mk]||[]).forEach(r => allRecs.push({ r, year: parseInt(y), month: parseInt(m) }));
+  });
+  if (!allRecs.length) { alert('명세서를 출력할 직원이 없습니다.'); return; }
+  const pages = document.getElementById('slip-pages');
+  pages.innerHTML = allRecs.map(({r, year, month}, i) => buildSlipHTML(r, year, month, i>0)).join('');
+  const { year, month } = getHistFilter();
+  const label = (year||'') + (month ? ' '+parseInt(month)+'월' : '');
+  document.getElementById('slip-modal-title').textContent = `급여명세서 — ${label} 전체 (${allRecs.length}명)`;
+  document.getElementById('slip-modal').style.display = 'flex';
+}
+window.printAllHistSlips = printAllHistSlips;
 
 /** 필터 적용 후 내보내기 */
 function exportFilteredCSV()  { const keys = getFilteredHistKeys(); if (!keys.length) { alert('내보낼 데이터가 없습니다.'); return; } downloadCSV(buildRowsForKeys(keys),  `4대보험_${new Date().toISOString().slice(0,10)}.csv`); }
