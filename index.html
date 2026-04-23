@@ -1176,8 +1176,52 @@ button.small {
 .pr-calc-total { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .pr-calc-total .pr-calc-val { font-size: 14px; color: var(--accent-blue); }
 
-/* 추가 공제 행 */
-.deduct-row {
+/* ── 급여명세서 직원 상세 ── */
+.slip-detail-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.slip-detail-name {
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.slip-detail-meta {
+  font-size: 11px; color: var(--text-muted); margin-top: 2px;
+}
+.slip-detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;
+}
+.slip-detail-section-title {
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
+  letter-spacing: .1em; text-transform: uppercase;
+  margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.slip-detail-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 0; border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+}
+.slip-detail-row:last-child { border-bottom: none; }
+.slip-detail-key   { color: var(--text-secondary); }
+.slip-detail-val   { font-weight: 600; font-family: var(--font-mono); color: var(--text-primary); }
+.slip-detail-total {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px; margin-top: 12px;
+  background: var(--bg-elevated); border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
+}
+.slip-detail-total .slip-detail-val { font-size: 14px; color: var(--accent-blue); }
+.slip-detail-net {
+  background: linear-gradient(135deg, var(--accent-blue-dim), rgba(45,212,191,.08));
+  border: 1px solid rgba(79,142,247,.2);
+  border-radius: var(--radius-md); padding: 12px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 12px;
+}
+.slip-detail-net-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); letter-spacing: .05em; text-transform: uppercase; }
+.slip-detail-net-val   { font-size: 18px; font-weight: 800; color: var(--accent-blue); font-family: var(--font-mono); letter-spacing: -.03em; }
+</style>
   display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
 }
 .deduct-row input[type="text"]   { flex: 1.2; font-size: 13px; }
@@ -1532,10 +1576,6 @@ button.small {
           <button class="primary" onclick="addManualEntry()">추가</button>
         </div>
       </div>
-      <div class="card" id="calc-preview" style="display:none;">
-        <div class="card-header"><div class="card-title">계산 결과</div></div>
-        <div id="calc-result-content"></div>
-      </div>
     </div>
 
     <!-- ═══ SLIP ═══ -->
@@ -1543,7 +1583,7 @@ button.small {
       <div class="page-header">
         <div class="page-header-eyebrow">Documents</div>
         <div class="page-title">급여명세서</div>
-        <div class="page-desc">직원 급여명세서를 미리보고 인쇄하세요</div>
+        <div class="page-desc">직원을 클릭하면 등록 상세를 확인하고, 명세서를 출력할 수 있습니다</div>
       </div>
       <div class="card">
         <div class="card-header"><div class="card-title">조회 대상 년월</div></div>
@@ -1553,14 +1593,19 @@ button.small {
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">직원 선택</div></div>
+        <div class="card-header"><div class="card-title">직원 선택 <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:6px;">클릭 시 상세 조회</span></div></div>
         <div class="emp-select-grid" id="slip-emp-grid">
           <div class="empty-state">이 월의 급여 데이터가 없습니다.</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
           <button onclick="previewSlip(false)">👁 개별 미리보기</button>
           <button onclick="previewSlip(true)" class="primary">🖨 전체 인쇄 (선택 직원)</button>
         </div>
+      </div>
+
+      <!-- 직원 상세 정보 카드 (클릭 시 표시) -->
+      <div class="card" id="slip-detail-card" style="display:none;">
+        <div id="slip-detail-content"></div>
       </div>
     </div>
 
@@ -1573,32 +1618,33 @@ button.small {
       </div>
       <div class="card">
         <!-- 필터 + 내보내기 행 -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <input type="number" id="hist-filter-year" placeholder="년도" min="2020" max="2035"
-              style="width:76px;padding:7px 10px;font-size:13px;"
-              oninput="renderHistory()">
-            <select id="hist-filter-month" style="padding:7px 10px;font-size:13px;min-width:72px;"
-              onchange="renderHistory()">
-              <option value="">전체</option>
-              <option value="01">1월</option><option value="02">2월</option>
-              <option value="03">3월</option><option value="04">4월</option>
-              <option value="05">5월</option><option value="06">6월</option>
-              <option value="07">7월</option><option value="08">8월</option>
-              <option value="09">9월</option><option value="10">10월</option>
-              <option value="11">11월</option><option value="12">12월</option>
-            </select>
-            <button onclick="clearHistFilter()" style="padding:7px 12px;font-size:12px;">전체 보기</button>
-          </div>
-          <div style="flex:1;"></div>
-          <div class="export-btns">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+          <!-- 필터 입력 그룹 -->
+          <input type="number" id="hist-filter-year" placeholder="년도" min="2020" max="2035"
+            style="width:72px;padding:7px 10px;font-size:13px;flex-shrink:0;"
+            oninput="renderHistory()">
+          <select id="hist-filter-month" style="padding:7px 10px;font-size:13px;min-width:70px;flex-shrink:0;"
+            onchange="renderHistory()">
+            <option value="">전체월</option>
+            <option value="01">1월</option><option value="02">2월</option>
+            <option value="03">3월</option><option value="04">4월</option>
+            <option value="05">5월</option><option value="06">6월</option>
+            <option value="07">7월</option><option value="08">8월</option>
+            <option value="09">9월</option><option value="10">10월</option>
+            <option value="11">11월</option><option value="12">12월</option>
+          </select>
+          <button onclick="clearHistFilter()" style="padding:7px 12px;font-size:12px;flex-shrink:0;">전체 보기</button>
+          <!-- 스페이서 -->
+          <div style="flex:1;min-width:8px;"></div>
+          <!-- 내보내기 -->
+          <div class="export-btns" style="flex-shrink:0;">
             <button class="btn-export-csv" onclick="exportFilteredCSV()">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
-              CSV 내보내기
+              CSV
             </button>
             <button class="btn-export-xlsx" onclick="exportFilteredXLSX()">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
-              Excel 내보내기
+              Excel
             </button>
           </div>
         </div>
@@ -2715,7 +2761,8 @@ async function confirmUpload() {
   pendingUpload = null;
   document.getElementById('preview-section').style.display = 'none';
   document.getElementById('file-input').value = '';
-  showCalcPreview(processed);
+  renderAll();
+  showToast(`✅ ${year}년 ${month}월 급여대장 적용 완료 (${processed.length}명) — 급여명세서 탭에서 확인하세요.`, 'success');
   alert(`${year}년 ${month}월 급여대장 적용 완료 (${processed.length}명)`);
 }
 window.confirmUpload = confirmUpload;
@@ -2742,7 +2789,8 @@ async function addManualEntry() {
   const ei  = records[mk].findIndex(r => r.empId === empId);
   if (ei >= 0) records[mk][ei] = rec; else records[mk].push(rec);
   await fsSavePayroll(mk);
-  showCalcPreview([rec]);
+  renderAll();
+  showToast(`✅ ${emp.name} 수동 입력 완료 — 급여명세서 탭에서 확인하세요.`, 'success');
 }
 window.addManualEntry = addManualEntry;
 
@@ -3212,16 +3260,151 @@ function refreshSlipPanel() {
   const mk    = `${year}-${String(month).padStart(2,'0')}`;
   const recs  = records[mk] || [];
   selectedEmpIds.clear();
+  // 상세 카드 숨기기
+  const dc = document.getElementById('slip-detail-card');
+  if (dc) dc.style.display = 'none';
   const grid = document.getElementById('slip-emp-grid');
   if (!recs.length) { grid.innerHTML = '<div class="empty-state">이 월의 급여 데이터가 없습니다.</div>'; return; }
-  grid.innerHTML = recs.map(r => `<div class="emp-chip" id="chip-${r.empId||r.name}" onclick="toggleEmpChip('${r.empId||r.name}',this)"><div class="emp-chip-name">${r.name}</div><div class="emp-chip-sub">${fmt(r.salary)}원</div></div>`).join('');
+  grid.innerHTML = recs.map(r => {
+    const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.bonus||0)+(r.otherNontax||0)+(r.overtime||0)+(r.holiday||0);
+    return `<div class="emp-chip" id="chip-${r.empId||r.name}" onclick="selectEmpChip('${encodeURIComponent(r.empId||r.name)}','${mk}',this)">
+      <div class="emp-chip-name">${r.name}</div>
+      <div class="emp-chip-sub">${fmt(gross)}원</div>
+    </div>`;
+  }).join('');
 }
+
+/** 직원 칩 클릭 — 선택 토글 + 상세 표시 */
+function selectEmpChip(encodedKey, mk, el) {
+  const key = decodeURIComponent(encodedKey);
+  // 선택 토글
+  if (selectedEmpIds.has(key)) {
+    selectedEmpIds.delete(key);
+    el.classList.remove('selected');
+    // 다른 선택된 직원이 없으면 상세 숨기기
+    if (!selectedEmpIds.size) {
+      document.getElementById('slip-detail-card').style.display = 'none';
+    }
+    return;
+  }
+  // 기존 선택 해제 후 새 선택
+  document.querySelectorAll('#slip-emp-grid .emp-chip').forEach(c => c.classList.remove('selected'));
+  selectedEmpIds.clear();
+  selectedEmpIds.add(key);
+  el.classList.add('selected');
+  // 상세 카드 렌더링
+  renderSlipDetail(mk, key);
+}
+window.selectEmpChip = selectEmpChip;
 
 function toggleEmpChip(id, el) {
   if (selectedEmpIds.has(id)) { selectedEmpIds.delete(id); el.classList.remove('selected'); }
   else { selectedEmpIds.add(id); el.classList.add('selected'); }
 }
 window.toggleEmpChip = toggleEmpChip;
+
+/** 직원 상세 정보 카드 렌더링 */
+function renderSlipDetail(mk, key) {
+  const recs = records[mk] || [];
+  const r = recs.find(x => (x.empId||x.name) === key);
+  if (!r) return;
+  const [y, m] = mk.split('-');
+  const ins = r.ins;
+  const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.bonus||0)+(r.otherNontax||0)+(r.overtime||0)+(r.holiday||0);
+  const extraDeductions = r.extraDeductions || [];
+  const extraTotal = extraDeductions.reduce((s,d)=>s+(d.amount||0),0);
+  const net = gross - ins.totalEmp - extraTotal;
+  const emp = employees.find(e => e.id === r.empId) || {};
+
+  // 지급 항목 행들
+  const payRows = [
+    ['기본급',       r.salary,       true],
+    ['식대',         r.meal,         false],
+    ['자가운전보조금', r.transport,    false],
+    ['육아수당',      r.childcare,    false],
+    ['연구수당',      r.research,     false],
+    ['상여금',        r.bonus,        false],
+    ['기타',          r.otherNontax,  false],
+    ['연장수당',      r.overtime,     false],
+    ['휴일근로수당',  r.holiday,      false],
+  ].filter(([, v, required]) => required || v);
+
+  const html = `
+    <div class="slip-detail-header">
+      <div>
+        <div class="slip-detail-name">${r.empCode ? '['+r.empCode+'] ' : ''}${r.name}</div>
+        <div class="slip-detail-meta">${y}년 ${parseInt(m)}월 귀속 · 입사일 ${emp.joinDate||'—'} · ${emp.status==='active'?'재직':emp.status==='leave'?'휴직':'퇴직'}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="small" onclick="openPrModal('${mk}','${encodeURIComponent(key)}')" style="color:var(--accent-blue);border-color:rgba(79,142,247,.3);">✏️ 수정</button>
+        <button class="small primary" onclick="quickSlip('${key}','${mk}')">🖨 명세서</button>
+      </div>
+    </div>
+
+    <div class="slip-detail-grid">
+      <!-- 지급 내역 -->
+      <div>
+        <div class="slip-detail-section-title">지급 내역</div>
+        ${payRows.map(([k,v]) => `<div class="slip-detail-row"><span class="slip-detail-key">${k}</span><span class="slip-detail-val">${fmt(v)}원</span></div>`).join('')}
+        <div class="slip-detail-row" style="border-top:1px solid var(--border-default);margin-top:6px;padding-top:6px;font-weight:700;">
+          <span class="slip-detail-key" style="color:var(--text-primary);">지급 합계</span>
+          <span class="slip-detail-val">${fmt(gross)}원</span>
+        </div>
+      </div>
+
+      <!-- 공제 내역 -->
+      <div>
+        <div class="slip-detail-section-title">공제 내역 (직원 부담)</div>
+        <div class="slip-detail-row"><span class="slip-detail-key">국민연금</span><span class="slip-detail-val">${fmt(ins.pension.emp)}원</span></div>
+        <div class="slip-detail-row"><span class="slip-detail-key">건강보험</span><span class="slip-detail-val">${fmt(ins.health.emp)}원</span></div>
+        <div class="slip-detail-row"><span class="slip-detail-key">장기요양보험</span><span class="slip-detail-val">${fmt(ins.longcare.emp)}원</span></div>
+        <div class="slip-detail-row"><span class="slip-detail-key">고용보험</span><span class="slip-detail-val">${fmt(ins.employ.emp)}원</span></div>
+        ${extraDeductions.map(d => `<div class="slip-detail-row"><span class="slip-detail-key">${d.name}</span><span class="slip-detail-val">${fmt(d.amount)}원</span></div>`).join('')}
+        <div class="slip-detail-row" style="border-top:1px solid var(--border-default);margin-top:6px;padding-top:6px;font-weight:700;">
+          <span class="slip-detail-key" style="color:var(--text-primary);">공제 합계</span>
+          <span class="slip-detail-val">${fmt(ins.totalEmp+extraTotal)}원</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 회사 부담 -->
+    <div class="slip-detail-section-title">회사 부담 4대보험</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">국민연금</div>
+        <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.pension.comp)}원</div>
+      </div>
+      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">건강+장기요양</div>
+        <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.health.comp+ins.longcare.comp)}원</div>
+      </div>
+      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">고용보험</div>
+        <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.employ.comp)}원</div>
+      </div>
+      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">산재보험</div>
+        <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.accident.comp)}원</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+      회사 부담 합계 &nbsp;<strong style="color:var(--text-primary);font-family:var(--font-mono);">${fmt(ins.totalComp)}원</strong>
+    </div>
+
+    <!-- 실수령액 -->
+    <div class="slip-detail-net">
+      <div class="slip-detail-net-label">실수령액 (예상)</div>
+      <div class="slip-detail-net-val">${fmt(net)}원</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">보수월액: ${fmt(ins.base)}원${r.insManual ? ' <span style="color:var(--accent-amber)">수동입력</span>' : ''}</div>
+  `;
+
+  const card = document.getElementById('slip-detail-card');
+  document.getElementById('slip-detail-content').innerHTML = html;
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+window.renderSlipDetail = renderSlipDetail;
 
 function getSlipRecs() {
   const year  = parseInt(document.getElementById('slip-year').value)  || currentYear;
