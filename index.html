@@ -2811,33 +2811,40 @@ function showCalcPreview(recs) {
 
 let prEditMk  = null;
 let prEditKey = null;
-let prDeductions = [];   // [{name, amount}]
+// prDeductions removed — using DOM-read pattern
 
-/** 공제 행 추가 */
+/** 공제 행 추가 — DOM-read 방식 (module scope 이슈 해결) */
 function addDeductionRow(name='', amount=0) {
-  const idx = prDeductions.length;
-  prDeductions.push({ name, amount });
   const list = document.getElementById('pr-deductions-list');
   const row  = document.createElement('div');
   row.className = 'deduct-row';
-  row.dataset.idx = idx;
   row.innerHTML = `
-    <input type="text"   value="${name}"   placeholder="항목명 (예: 소득세, 학자금 등)"
-      oninput="prDeductions[${idx}].name=this.value">
-    <input type="number" value="${amount}" placeholder="금액"
-      oninput="prDeductions[${idx}].amount=parseInt(this.value)||0;updatePrCalc()">
-    <button class="deduct-del" onclick="removeDeductionRow(this,${idx})">✕</button>`;
+    <input type="text"   class="pd-name"   value="${String(name).replace(/"/g,'&quot;')}"   placeholder="항목명 (예: 소득세, 학자금 등)">
+    <input type="number" class="pd-amount" value="${amount||''}" placeholder="금액">
+    <button class="deduct-del" onclick="removeDeductionRow(this)">✕</button>`;
+  row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updatePrCalc));
   list.appendChild(row);
   updatePrCalc();
 }
 window.addDeductionRow = addDeductionRow;
 
-function removeDeductionRow(btn, idx) {
-  prDeductions[idx] = null;   // sparse 처리
+function removeDeductionRow(btn) {
   btn.closest('.deduct-row').remove();
   updatePrCalc();
 }
 window.removeDeductionRow = removeDeductionRow;
+
+/** pr-modal DOM에서 공제항목 읽기 */
+function getPrDeductionsFromDOM() {
+  const rows = document.querySelectorAll('#pr-deductions-list .deduct-row');
+  const result = [];
+  rows.forEach(row => {
+    const name   = (row.querySelector('.pd-name')?.value   || '').trim();
+    const amount = parseInt(row.querySelector('.pd-amount')?.value) || 0;
+    if (name || amount > 0) result.push({ name, amount });
+  });
+  return result;
+}
 
 /** 자동/수동 모드 토글 */
 function toggleInsMode() {
@@ -2900,8 +2907,7 @@ function openPrModal(mk, encodedKey) {
   }
   toggleInsMode();   // 초기 UI 상태 반영
 
-  // 추가 공제
-  prDeductions = [];
+  // 추가 공제 — DOM에 행으로 추가
   document.getElementById('pr-deductions-list').innerHTML = '';
   (r.extraDeductions||[]).forEach(d => addDeductionRow(d.name, d.amount));
 
@@ -2912,7 +2918,7 @@ window.openPrModal = openPrModal;
 
 function closePrModal() {
   document.getElementById('pr-modal').classList.remove('open');
-  prEditMk = null; prEditKey = null; prDeductions = [];
+  prEditMk = null; prEditKey = null;
 }
 window.closePrModal = closePrModal;
 
@@ -2951,7 +2957,7 @@ function updatePrCalc() {
   }
 
   // 추가 공제 합계
-  const extraDeduct = prDeductions.filter(Boolean).reduce((s,d) => s+(d.amount||0), 0);
+  const extraDeduct = getPrDeductionsFromDOM().reduce((s,d) => s+(d.amount||0), 0);
   const net = gross - empTotal - extraDeduct;
 
   document.getElementById('prc-gross').textContent       = fmt(gross) + '원';
@@ -3007,8 +3013,8 @@ async function savePrRecord() {
     };
   }
 
-  // 추가 공제 정리 (null 제거)
-  const extraDeductions = prDeductions.filter(d => d && d.name && d.amount > 0);
+  // 추가 공제 — DOM에서 직접 읽기
+  const extraDeductions = getPrDeductionsFromDOM().filter(d => d.name && d.amount > 0);
 
   const updated = {
     ...recs[idx],
@@ -3296,37 +3302,34 @@ window.toggleEmpChip = toggleEmpChip;
 // ── 현재 상세보기 중인 공제항목 배열 (slip panel용) ─────────
 let slipDetailMk  = null;
 let slipDetailKey = null;
-let slipDeductions = [];   // [{name, amount}]
+// slipDeductions removed — using DOM-read pattern
 
-/** slip 상세 공제항목 행 추가 */
+/** slip 상세 공제항목 행 추가 — 인라인 핸들러 없음, DOM-read 방식 */
 function addSlipDeductRow(name='', amount=0) {
-  const idx = slipDeductions.length;
-  slipDeductions.push({ name, amount });
   const list = document.getElementById('slip-deduct-list');
   if (!list) return;
   const row = document.createElement('div');
   row.className = 'deduct-row';
-  row.dataset.idx = idx;
   row.innerHTML = `
-    <input type="text"   value="${name}"   placeholder="항목명 (예: 소득세, 학자금 등)"
-      oninput="slipDeductions[${idx}].name=this.value;refreshSlipDeductTotal()">
-    <input type="number" value="${amount}" placeholder="금액"
-      oninput="slipDeductions[${idx}].amount=parseInt(this.value)||0;refreshSlipDeductTotal()">
-    <button class="deduct-del" onclick="removeSlipDeductRow(this,${idx})">✕</button>`;
+    <input type="text"   class="sd-name"   value="${String(name).replace(/"/g,'&quot;')}"   placeholder="항목명 (예: 소득세, 학자금 등)">
+    <input type="number" class="sd-amount" value="${amount||''}" placeholder="금액">
+    <button class="deduct-del" onclick="removeSlipDeductRow(this)">✕</button>`;
+  // input 변경 시 합계 갱신 (addEventListener — 모듈 스코프 접근 가능)
+  row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', refreshSlipDeductTotal));
   list.appendChild(row);
   refreshSlipDeductTotal();
 }
 window.addSlipDeductRow = addSlipDeductRow;
 
-function removeSlipDeductRow(btn, idx) {
-  slipDeductions[idx] = null;
+function removeSlipDeductRow(btn) {
   btn.closest('.deduct-row').remove();
   refreshSlipDeductTotal();
 }
 window.removeSlipDeductRow = removeSlipDeductRow;
 
+/** DOM에서 직접 공제 합계 계산 */
 function refreshSlipDeductTotal() {
-  const total = slipDeductions.filter(Boolean).reduce((s,d)=>s+(d.amount||0),0);
+  const total = getSlipDeductionsFromDOM().reduce((s,d)=>s+d.amount, 0);
   const el = document.getElementById('slip-deduct-total');
   if (el) el.textContent = fmt(total) + '원';
   // 실수령액 재계산
@@ -3334,27 +3337,46 @@ function refreshSlipDeductTotal() {
   const insEl   = document.getElementById('slip-detail-ins-val');
   const netEl   = document.getElementById('slip-detail-net-val');
   if (grossEl && insEl && netEl) {
-    const gross   = parseInt(grossEl.dataset.val) || 0;
-    const insTotal= parseInt(insEl.dataset.val)   || 0;
+    const gross    = parseInt(grossEl.dataset.val) || 0;
+    const insTotal = parseInt(insEl.dataset.val)   || 0;
     netEl.textContent = fmt(gross - insTotal - total) + '원';
   }
 }
 window.refreshSlipDeductTotal = refreshSlipDeductTotal;
 
-/** 공제항목 저장 (slip 상세 카드에서) */
+/** DOM에서 현재 입력된 공제항목 읽기 */
+function getSlipDeductionsFromDOM() {
+  const rows = document.querySelectorAll('#slip-deduct-list .deduct-row');
+  const result = [];
+  rows.forEach(row => {
+    const name   = (row.querySelector('.sd-name')?.value   || '').trim();
+    const amount = parseInt(row.querySelector('.sd-amount')?.value) || 0;
+    if (name || amount > 0) result.push({ name, amount });
+  });
+  return result;
+}
+
+/** 공제항목 저장 — DOM에서 읽어 Firebase에 저장 */
 async function saveSlipDeductions() {
-  if (!slipDetailMk || !slipDetailKey) return;
+  if (!slipDetailMk || !slipDetailKey) {
+    showToast('⚠️ 저장할 직원을 먼저 선택해주세요.', 'info');
+    return;
+  }
   const recs = records[slipDetailMk] || [];
   const idx  = recs.findIndex(x => (x.empId||x.name) === slipDetailKey);
-  if (idx < 0) return;
-  const cleaned = slipDeductions.filter(d => d && d.name && d.amount > 0);
+  if (idx < 0) { showToast('⚠️ 데이터를 찾을 수 없습니다.', 'info'); return; }
+
+  const cleaned = getSlipDeductionsFromDOM().filter(d => d.name && d.amount > 0);
   records[slipDetailMk][idx] = { ...recs[idx], extraDeductions: cleaned };
   try {
     await fsSavePayroll(slipDetailMk);
     showToast('✅ 공제항목이 저장되었습니다.', 'success');
-    renderSlipDetail(slipDetailMk, slipDetailKey);   // 재렌더
-    renderAll();
-  } catch(e) { alert('저장 중 오류가 발생했습니다.'); }
+    renderSlipDetail(slipDetailMk, slipDetailKey);  // 상세 카드 재렌더
+    renderHistory();                                  // 월별기록 갱신
+  } catch(e) {
+    console.error('공제항목 저장 오류:', e);
+    alert('저장 중 오류가 발생했습니다: ' + e.message);
+  }
 }
 window.saveSlipDeductions = saveSlipDeductions;
 
