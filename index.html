@@ -1175,6 +1175,21 @@ button.small {
 .pr-calc-val { font-weight: 600; font-family: var(--font-mono); color: var(--text-primary); font-size: 12px; }
 .pr-calc-total { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .pr-calc-total .pr-calc-val { font-size: 14px; color: var(--accent-blue); }
+
+/* 추가 공제 행 */
+.deduct-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.deduct-row input[type="text"]   { flex: 1.2; font-size: 13px; }
+.deduct-row input[type="number"] { flex: 1; font-size: 13px; font-family: var(--font-mono); }
+.deduct-row .deduct-del {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border: 1px solid rgba(248,113,113,.3); border-radius: var(--radius-sm);
+  background: transparent; cursor: pointer; color: var(--accent-rose);
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+  transition: all .15s;
+}
+.deduct-row .deduct-del:hover { background: var(--accent-rose-dim); }
 </style>
 </head>
 <body>
@@ -1554,22 +1569,41 @@ button.small {
       <div class="page-header">
         <div class="page-header-eyebrow">Records</div>
         <div class="page-title">월별 기록</div>
-        <div class="page-desc">4대보험 납부 기록을 확인하세요</div>
+        <div class="page-desc">4대보험 납부 기록 조회 및 급여명세서 출력</div>
       </div>
       <div class="card">
-        <div class="export-row">
-          <div class="card-title" style="margin-bottom:0;">월별 4대보험 기록</div>
+        <!-- 필터 + 내보내기 행 -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="number" id="hist-filter-year" placeholder="년도" min="2020" max="2035"
+              style="width:76px;padding:7px 10px;font-size:13px;"
+              oninput="renderHistory()">
+            <select id="hist-filter-month" style="padding:7px 10px;font-size:13px;min-width:72px;"
+              onchange="renderHistory()">
+              <option value="">전체</option>
+              <option value="01">1월</option><option value="02">2월</option>
+              <option value="03">3월</option><option value="04">4월</option>
+              <option value="05">5월</option><option value="06">6월</option>
+              <option value="07">7월</option><option value="08">8월</option>
+              <option value="09">9월</option><option value="10">10월</option>
+              <option value="11">11월</option><option value="12">12월</option>
+            </select>
+            <button onclick="clearHistFilter()" style="padding:7px 12px;font-size:12px;">전체 보기</button>
+          </div>
+          <div style="flex:1;"></div>
           <div class="export-btns">
-            <button class="btn-export-csv" onclick="exportAllCSV()">
+            <button class="btn-export-csv" onclick="exportFilteredCSV()">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
-              전체 CSV
+              CSV 내보내기
             </button>
-            <button class="btn-export-xlsx" onclick="exportAllXLSX()">
+            <button class="btn-export-xlsx" onclick="exportFilteredXLSX()">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
-              전체 Excel
+              Excel 내보내기
             </button>
           </div>
         </div>
+        <!-- 조회 결과 요약 -->
+        <div id="hist-summary" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary);"></div>
         <div id="history-content">
           <div class="empty-state">
             <div class="empty-state-icon">📁</div>
@@ -1737,97 +1771,92 @@ button.small {
       <!-- 기본 정보 -->
       <div class="pr-section-label">기본 정보</div>
       <div class="form-row">
-        <div class="form-field">
-          <label>사원번호</label>
-          <input type="text" id="pr-empcode" placeholder="0001">
-        </div>
-        <div class="form-field">
-          <label>성명</label>
-          <input type="text" id="pr-name" readonly style="background:var(--bg-elevated);opacity:.7;cursor:not-allowed;">
-        </div>
+        <div class="form-field"><label>사원번호</label><input type="text" id="pr-empcode" placeholder="0001"></div>
+        <div class="form-field"><label>성명</label><input type="text" id="pr-name" readonly style="background:var(--bg-elevated);opacity:.7;cursor:not-allowed;"></div>
       </div>
 
       <!-- 기본급 -->
       <div class="pr-section-label">기본급여</div>
       <div class="form-row" style="margin-bottom:0;">
-        <div class="form-field">
-          <label>기본급 (원)</label>
-          <input type="number" id="pr-salary" placeholder="3000000" oninput="updatePrCalc()">
-        </div>
+        <div class="form-field"><label>기본급 (원)</label><input type="number" id="pr-salary" placeholder="3000000" oninput="updatePrCalc()"></div>
         <div></div>
       </div>
 
       <!-- 비과세 수당 -->
       <div class="pr-section-label">비과세 수당 <span class="pr-tag pr-tag-nontax">한도 내 보험료 제외</span></div>
       <div class="form-row">
-        <div class="form-field">
-          <label>식대 (원)</label>
-          <input type="number" id="pr-meal" value="0" oninput="updatePrCalc()">
-        </div>
-        <div class="form-field">
-          <label>자가운전보조금 (원)</label>
-          <input type="number" id="pr-transport" value="0" oninput="updatePrCalc()">
-        </div>
+        <div class="form-field"><label>식대 (원)</label><input type="number" id="pr-meal" value="0" oninput="updatePrCalc()"></div>
+        <div class="form-field"><label>자가운전보조금 (원)</label><input type="number" id="pr-transport" value="0" oninput="updatePrCalc()"></div>
       </div>
       <div class="form-row">
-        <div class="form-field">
-          <label>육아수당 (원)</label>
-          <input type="number" id="pr-childcare" value="0" oninput="updatePrCalc()">
-        </div>
-        <div class="form-field">
-          <label>연구수당 (원)</label>
-          <input type="number" id="pr-research" value="0" oninput="updatePrCalc()">
-        </div>
+        <div class="form-field"><label>육아수당 (원)</label><input type="number" id="pr-childcare" value="0" oninput="updatePrCalc()"></div>
+        <div class="form-field"><label>연구수당 (원)</label><input type="number" id="pr-research" value="0" oninput="updatePrCalc()"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>상여금 (원) <span class="pr-tag pr-tag-nontax">비과세</span></label><input type="number" id="pr-bonus" value="0" oninput="updatePrCalc()"></div>
+        <div class="form-field"><label>기타 (원) <span class="pr-tag pr-tag-nontax">비과세</span></label><input type="number" id="pr-other-nontax" value="0" oninput="updatePrCalc()"></div>
       </div>
 
       <!-- 과세 수당 -->
       <div class="pr-section-label">과세 수당 <span class="pr-tag pr-tag-tax">전액 보험료 산정 포함</span></div>
       <div class="form-row">
-        <div class="form-field">
-          <label>연장수당 (원)</label>
-          <input type="number" id="pr-overtime" value="0" oninput="updatePrCalc()">
+        <div class="form-field"><label>연장수당 (원)</label><input type="number" id="pr-overtime" value="0" oninput="updatePrCalc()"></div>
+        <div class="form-field"><label>휴일근로수당 (원)</label><input type="number" id="pr-holiday" value="0" oninput="updatePrCalc()"></div>
+      </div>
+
+      <!-- 4대보험 공제 (직원 부담 - 수동 편집 가능) -->
+      <div class="pr-section-label">
+        4대보험 공제 <span class="pr-tag" style="background:rgba(167,139,250,.12);color:var(--accent-purple);">직원부담 · 수동편집</span>
+        <label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;margin-left:4px;">
+          <input type="checkbox" id="pr-ins-auto" checked onchange="toggleInsMode()"> 자동계산
+        </label>
+      </div>
+      <div id="pr-ins-auto-preview" style="font-size:11px;color:var(--accent-blue);padding:8px 12px;background:var(--accent-blue-dim);border-radius:var(--radius-md);margin-bottom:10px;"></div>
+      <div id="pr-ins-manual-fields" style="display:none;">
+        <div class="form-row">
+          <div class="form-field"><label>국민연금 직원 (원)</label><input type="number" id="pr-ins-pension-emp" value="0" oninput="updateInsManualTotal()"></div>
+          <div class="form-field"><label>국민연금 회사 (원)</label><input type="number" id="pr-ins-pension-comp" value="0" oninput="updateInsManualTotal()"></div>
         </div>
-        <div class="form-field">
-          <label>휴일근로수당 (원)</label>
-          <input type="number" id="pr-holiday" value="0" oninput="updatePrCalc()">
+        <div class="form-row">
+          <div class="form-field"><label>건강보험 직원 (원)</label><input type="number" id="pr-ins-health-emp" value="0" oninput="updateInsManualTotal()"></div>
+          <div class="form-field"><label>건강보험 회사 (원)</label><input type="number" id="pr-ins-health-comp" value="0" oninput="updateInsManualTotal()"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>장기요양 직원 (원)</label><input type="number" id="pr-ins-lc-emp" value="0" oninput="updateInsManualTotal()"></div>
+          <div class="form-field"><label>장기요양 회사 (원)</label><input type="number" id="pr-ins-lc-comp" value="0" oninput="updateInsManualTotal()"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>고용보험 직원 (원)</label><input type="number" id="pr-ins-employ-emp" value="0" oninput="updateInsManualTotal()"></div>
+          <div class="form-field"><label>고용보험 회사 (원)</label><input type="number" id="pr-ins-employ-comp" value="0" oninput="updateInsManualTotal()"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>산재보험 회사 (원)</label><input type="number" id="pr-ins-accident-comp" value="0" oninput="updateInsManualTotal()"></div>
+          <div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 12px;background:var(--bg-elevated);border-radius:var(--radius-md);font-size:12px;margin-top:4px;">
+          <span style="color:var(--text-secondary);">직원 부담 합계</span>
+          <span style="font-weight:700;font-family:var(--font-mono);color:var(--accent-blue);" id="pr-ins-manual-emp-total">0원</span>
+          <span style="color:var(--text-secondary);margin-left:16px;">회사 부담 합계</span>
+          <span style="font-weight:700;font-family:var(--font-mono);color:var(--accent-teal);" id="pr-ins-manual-comp-total">0원</span>
         </div>
       </div>
 
-      <!-- 실시간 보험료 계산 미리보기 -->
-      <div class="pr-calc-preview">
-        <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;">보험료 계산 미리보기</div>
-        <div class="pr-calc-row">
-          <span class="pr-calc-label">지급합계</span>
-          <span class="pr-calc-val" id="prc-gross">—</span>
-        </div>
-        <div class="pr-calc-row">
-          <span class="pr-calc-label">보수월액 (보험료 산정기준)</span>
-          <span class="pr-calc-val" id="prc-base">—</span>
-        </div>
-        <div class="pr-calc-row">
-          <span class="pr-calc-label">국민연금 (직원 / 회사)</span>
-          <span class="pr-calc-val" id="prc-pension">—</span>
-        </div>
-        <div class="pr-calc-row">
-          <span class="pr-calc-label">건강+장기요양 (직원 / 회사)</span>
-          <span class="pr-calc-val" id="prc-health">—</span>
-        </div>
-        <div class="pr-calc-row">
-          <span class="pr-calc-label">고용보험 (직원 / 회사)</span>
-          <span class="pr-calc-val" id="prc-employ">—</span>
-        </div>
-        <div class="pr-calc-row">
-          <span class="pr-calc-label">산재보험 (회사)</span>
-          <span class="pr-calc-val" id="prc-accident">—</span>
-        </div>
-        <div class="pr-calc-total">
-          <span>직원 부담 합계</span>
-          <span class="pr-calc-val" id="prc-emp-total">—</span>
-        </div>
-        <div class="pr-calc-total" style="padding-top:4px;">
-          <span>회사 부담 합계</span>
-          <span class="pr-calc-val" id="prc-comp-total">—</span>
-        </div>
+      <!-- 추가 공제 항목 -->
+      <div class="pr-section-label">추가 공제 항목 <span class="pr-tag pr-tag-tax">실수령액 차감</span></div>
+      <div id="pr-deductions-list"></div>
+      <button onclick="addDeductionRow()" style="margin-top:6px;padding:6px 14px;font-size:11px;border-style:dashed;">
+        + 공제 항목 추가
+      </button>
+
+      <!-- 실시간 계산 요약 -->
+      <div class="pr-calc-preview" style="margin-top:16px;">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;">최종 계산 요약</div>
+        <div class="pr-calc-row"><span class="pr-calc-label">지급합계</span><span class="pr-calc-val" id="prc-gross">—</span></div>
+        <div class="pr-calc-row"><span class="pr-calc-label">보수월액 (보험료 산정기준)</span><span class="pr-calc-val" id="prc-base">—</span></div>
+        <div class="pr-calc-row"><span class="pr-calc-label">4대보험 직원 부담</span><span class="pr-calc-val" id="prc-emp-total">—</span></div>
+        <div class="pr-calc-row"><span class="pr-calc-label">4대보험 회사 부담</span><span class="pr-calc-val" id="prc-comp-total">—</span></div>
+        <div class="pr-calc-row"><span class="pr-calc-label">추가 공제 합계</span><span class="pr-calc-val" id="prc-extra-deduct">0원</span></div>
+        <div class="pr-calc-total"><span>실수령액 (예상)</span><span class="pr-calc-val" id="prc-net">—</span></div>
       </div>
     </div>
     <div class="pr-modal-footer">
@@ -2743,16 +2772,60 @@ function showCalcPreview(recs) {
 // ✏️ 급여 레코드 수정 / 삭제
 // ══════════════════════════════════════════════════════
 
-let prEditMk  = null;   // 현재 편집 중인 년월키 (e.g. "2026-02")
-let prEditKey = null;   // 현재 편집 중인 empId 또는 name (decodeURIComponent 후)
+let prEditMk  = null;
+let prEditKey = null;
+let prDeductions = [];   // [{name, amount}]
 
-/** 급여 편집 모달 열기 */
+/** 공제 행 추가 */
+function addDeductionRow(name='', amount=0) {
+  const idx = prDeductions.length;
+  prDeductions.push({ name, amount });
+  const list = document.getElementById('pr-deductions-list');
+  const row  = document.createElement('div');
+  row.className = 'deduct-row';
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <input type="text"   value="${name}"   placeholder="항목명 (예: 소득세, 학자금 등)"
+      oninput="prDeductions[${idx}].name=this.value">
+    <input type="number" value="${amount}" placeholder="금액"
+      oninput="prDeductions[${idx}].amount=parseInt(this.value)||0;updatePrCalc()">
+    <button class="deduct-del" onclick="removeDeductionRow(this,${idx})">✕</button>`;
+  list.appendChild(row);
+  updatePrCalc();
+}
+window.addDeductionRow = addDeductionRow;
+
+function removeDeductionRow(btn, idx) {
+  prDeductions[idx] = null;   // sparse 처리
+  btn.closest('.deduct-row').remove();
+  updatePrCalc();
+}
+window.removeDeductionRow = removeDeductionRow;
+
+/** 자동/수동 모드 토글 */
+function toggleInsMode() {
+  const auto = document.getElementById('pr-ins-auto').checked;
+  document.getElementById('pr-ins-auto-preview').style.display  = auto ? 'block' : 'none';
+  document.getElementById('pr-ins-manual-fields').style.display = auto ? 'none'  : 'block';
+  updatePrCalc();
+}
+window.toggleInsMode = toggleInsMode;
+
+/** 수동 편집 시 합계 업데이트 */
+function updateInsManualTotal() {
+  const n = id => parseInt(document.getElementById(id)?.value)||0;
+  const empTotal  = n('pr-ins-pension-emp') + n('pr-ins-health-emp') + n('pr-ins-lc-emp') + n('pr-ins-employ-emp');
+  const compTotal = n('pr-ins-pension-comp') + n('pr-ins-health-comp') + n('pr-ins-lc-comp') + n('pr-ins-employ-comp') + n('pr-ins-accident-comp');
+  document.getElementById('pr-ins-manual-emp-total').textContent  = fmt(empTotal)  + '원';
+  document.getElementById('pr-ins-manual-comp-total').textContent = fmt(compTotal) + '원';
+  updatePrCalc();
+}
+window.updateInsManualTotal = updateInsManualTotal;
+
 function openPrModal(mk, encodedKey) {
   const key = decodeURIComponent(encodedKey);
-  const recs = records[mk] || [];
-  const r = recs.find(x => (x.empId||x.name) === key);
+  const r = (records[mk]||[]).find(x => (x.empId||x.name) === key);
   if (!r) { alert('데이터를 찾을 수 없습니다.'); return; }
-
   prEditMk  = mk;
   prEditKey = key;
 
@@ -2760,15 +2833,40 @@ function openPrModal(mk, encodedKey) {
   document.getElementById('pr-modal-title').textContent = `급여 수정 — ${r.name}`;
   document.getElementById('pr-modal-meta').textContent  = `${y}년 ${parseInt(m)}월 귀속`;
 
-  document.getElementById('pr-empcode').value   = r.empCode   || '';
-  document.getElementById('pr-name').value      = r.name      || '';
-  document.getElementById('pr-salary').value    = r.salary    || 0;
-  document.getElementById('pr-meal').value      = r.meal      || 0;
-  document.getElementById('pr-transport').value = r.transport || 0;
-  document.getElementById('pr-childcare').value = r.childcare || 0;
-  document.getElementById('pr-research').value  = r.research  || 0;
-  document.getElementById('pr-overtime').value  = r.overtime  || 0;
-  document.getElementById('pr-holiday').value   = r.holiday   || 0;
+  // 기본 필드
+  document.getElementById('pr-empcode').value       = r.empCode     || '';
+  document.getElementById('pr-name').value          = r.name        || '';
+  document.getElementById('pr-salary').value        = r.salary      || 0;
+  document.getElementById('pr-meal').value          = r.meal        || 0;
+  document.getElementById('pr-transport').value     = r.transport   || 0;
+  document.getElementById('pr-childcare').value     = r.childcare   || 0;
+  document.getElementById('pr-research').value      = r.research    || 0;
+  document.getElementById('pr-bonus').value         = r.bonus       || 0;
+  document.getElementById('pr-other-nontax').value  = r.otherNontax || 0;
+  document.getElementById('pr-overtime').value      = r.overtime    || 0;
+  document.getElementById('pr-holiday').value       = r.holiday     || 0;
+
+  // 보험료 모드 (insManual 플래그)
+  const isManual = !!r.insManual;
+  document.getElementById('pr-ins-auto').checked = !isManual;
+  if (isManual && r.ins) {
+    const f = (id, v) => { const el = document.getElementById(id); if (el) el.value = v||0; };
+    f('pr-ins-pension-emp',   r.ins.pension.emp);
+    f('pr-ins-pension-comp',  r.ins.pension.comp);
+    f('pr-ins-health-emp',    r.ins.health.emp);
+    f('pr-ins-health-comp',   r.ins.health.comp);
+    f('pr-ins-lc-emp',        r.ins.longcare.emp);
+    f('pr-ins-lc-comp',       r.ins.longcare.comp);
+    f('pr-ins-employ-emp',    r.ins.employ.emp);
+    f('pr-ins-employ-comp',   r.ins.employ.comp);
+    f('pr-ins-accident-comp', r.ins.accident.comp);
+  }
+  toggleInsMode();   // 초기 UI 상태 반영
+
+  // 추가 공제
+  prDeductions = [];
+  document.getElementById('pr-deductions-list').innerHTML = '';
+  (r.extraDeductions||[]).forEach(d => addDeductionRow(d.name, d.amount));
 
   document.getElementById('pr-modal').classList.add('open');
   updatePrCalc();
@@ -2777,62 +2875,113 @@ window.openPrModal = openPrModal;
 
 function closePrModal() {
   document.getElementById('pr-modal').classList.remove('open');
-  prEditMk = null; prEditKey = null;
+  prEditMk = null; prEditKey = null; prDeductions = [];
 }
 window.closePrModal = closePrModal;
 
-/** 보험료 실시간 미리보기 업데이트 */
 function updatePrCalc() {
-  const n = id => parseInt(document.getElementById(id)?.value) || 0;
+  const n = id => parseInt(document.getElementById(id)?.value)||0;
   const salary    = n('pr-salary');
   const meal      = n('pr-meal');
   const transport = n('pr-transport');
   const childcare = n('pr-childcare');
   const research  = n('pr-research');
+  const bonus     = n('pr-bonus');
+  const otherNT   = n('pr-other-nontax');
   const overtime  = n('pr-overtime');
   const holiday   = n('pr-holiday');
-  const gross = salary + meal + transport + childcare + research + overtime + holiday;
-  const ins   = calcInsurance(salary, meal, transport, childcare, research, overtime, holiday);
+  const gross = salary + meal + transport + childcare + research + bonus + otherNT + overtime + holiday;
 
-  document.getElementById('prc-gross').textContent   = fmt(gross) + '원';
-  document.getElementById('prc-base').textContent    = fmt(ins.base) + '원';
-  document.getElementById('prc-pension').textContent = `${fmt(ins.pension.emp)} / ${fmt(ins.pension.comp)}원`;
-  document.getElementById('prc-health').textContent  = `${fmt(ins.health.emp+ins.longcare.emp)} / ${fmt(ins.health.comp+ins.longcare.comp)}원`;
-  document.getElementById('prc-employ').textContent  = `${fmt(ins.employ.emp)} / ${fmt(ins.employ.comp)}원`;
-  document.getElementById('prc-accident').textContent= fmt(ins.accident.comp) + '원';
-  document.getElementById('prc-emp-total').textContent  = fmt(ins.totalEmp)  + '원';
-  document.getElementById('prc-comp-total').textContent = fmt(ins.totalComp) + '원';
+  const auto = document.getElementById('pr-ins-auto')?.checked !== false;
+  const ins  = calcInsurance(salary, meal, transport, childcare, research, overtime, holiday);
+
+  // 자동 미리보기
+  const prev = document.getElementById('pr-ins-auto-preview');
+  if (prev) prev.innerHTML = `보수월액 ${fmt(ins.base)}원 기준 &nbsp;|&nbsp;
+    국민연금 ${fmt(ins.pension.emp)}/${fmt(ins.pension.comp)} &nbsp;|&nbsp;
+    건강+장기요양 ${fmt(ins.health.emp+ins.longcare.emp)}/${fmt(ins.health.comp+ins.longcare.comp)} &nbsp;|&nbsp;
+    고용 ${fmt(ins.employ.emp)}/${fmt(ins.employ.comp)} &nbsp;|&nbsp;
+    산재 ${fmt(ins.accident.comp)}원`;
+
+  // 실제 적용 보험료 (자동/수동)
+  let empTotal, compTotal;
+  if (auto) {
+    empTotal  = ins.totalEmp;
+    compTotal = ins.totalComp;
+  } else {
+    empTotal  = n('pr-ins-pension-emp') + n('pr-ins-health-emp') + n('pr-ins-lc-emp') + n('pr-ins-employ-emp');
+    compTotal = n('pr-ins-pension-comp') + n('pr-ins-health-comp') + n('pr-ins-lc-comp') + n('pr-ins-employ-comp') + n('pr-ins-accident-comp');
+  }
+
+  // 추가 공제 합계
+  const extraDeduct = prDeductions.filter(Boolean).reduce((s,d) => s+(d.amount||0), 0);
+  const net = gross - empTotal - extraDeduct;
+
+  document.getElementById('prc-gross').textContent       = fmt(gross) + '원';
+  document.getElementById('prc-base').textContent        = fmt(ins.base) + '원';
+  document.getElementById('prc-emp-total').textContent   = fmt(empTotal)  + '원';
+  document.getElementById('prc-comp-total').textContent  = fmt(compTotal) + '원';
+  document.getElementById('prc-extra-deduct').textContent= fmt(extraDeduct) + '원';
+  document.getElementById('prc-net').textContent         = fmt(net) + '원';
 }
 window.updatePrCalc = updatePrCalc;
 
-/** 급여 레코드 저장 */
 async function savePrRecord() {
   if (!prEditMk || !prEditKey) return;
   const recs = records[prEditMk] || [];
   const idx  = recs.findIndex(x => (x.empId||x.name) === prEditKey);
   if (idx < 0) { alert('저장할 데이터를 찾을 수 없습니다.'); return; }
 
-  const n = id => parseInt(document.getElementById(id)?.value) || 0;
-  const salary    = n('pr-salary');
+  const n = id => parseInt(document.getElementById(id)?.value)||0;
+  const salary = n('pr-salary');
   if (!salary) { alert('기본급을 입력해주세요.'); return; }
 
-  const meal      = n('pr-meal');
-  const transport = n('pr-transport');
-  const childcare = n('pr-childcare');
-  const research  = n('pr-research');
-  const overtime  = n('pr-overtime');
-  const holiday   = n('pr-holiday');
-  const empCode   = document.getElementById('pr-empcode').value.trim();
-  const ins = calcInsurance(salary, meal, transport, childcare, research, overtime, holiday);
+  const meal       = n('pr-meal');
+  const transport  = n('pr-transport');
+  const childcare  = n('pr-childcare');
+  const research   = n('pr-research');
+  const bonus      = n('pr-bonus');
+  const otherNontax= n('pr-other-nontax');
+  const overtime   = n('pr-overtime');
+  const holiday    = n('pr-holiday');
+  const empCode    = document.getElementById('pr-empcode').value.trim();
 
-  // 기존 레코드의 empId, name은 유지
+  const auto = document.getElementById('pr-ins-auto')?.checked !== false;
+  let ins;
+  if (auto) {
+    ins = calcInsurance(salary, meal, transport, childcare, research, overtime, holiday);
+  } else {
+    // 수동 입력값으로 ins 구성
+    const pe = n('pr-ins-pension-emp'),   pc = n('pr-ins-pension-comp');
+    const he = n('pr-ins-health-emp'),    hc = n('pr-ins-health-comp');
+    const le = n('pr-ins-lc-emp'),        lc = n('pr-ins-lc-comp');
+    const ee = n('pr-ins-employ-emp'),    ec = n('pr-ins-employ-comp');
+    const ac = n('pr-ins-accident-comp');
+    const baseIns = calcInsurance(salary, meal, transport, childcare, research, overtime, holiday);
+    ins = {
+      pension:  { emp: pe, comp: pc },
+      health:   { emp: he, comp: hc },
+      longcare: { emp: le, comp: lc },
+      employ:   { emp: ee, comp: ec },
+      accident: { emp: 0,  comp: ac },
+      totalEmp:  pe + he + le + ee,
+      totalComp: pc + hc + lc + ec + ac,
+      base: baseIns.base
+    };
+  }
+
+  // 추가 공제 정리 (null 제거)
+  const extraDeductions = prDeductions.filter(d => d && d.name && d.amount > 0);
+
   const updated = {
     ...recs[idx],
-    empCode, salary, meal, transport, childcare, research, overtime, holiday, ins
+    empCode, salary, meal, transport, childcare, research,
+    bonus, otherNontax, overtime, holiday,
+    ins, insManual: !auto,
+    extraDeductions
   };
   records[prEditMk][idx] = updated;
 
-  // 직원 기본 정보도 업데이트
   const emp = employees.find(e => e.id === updated.empId);
   if (emp) { emp.salary = salary; emp.empCode = empCode; await fsSetEmployee(emp); }
 
@@ -2840,11 +2989,8 @@ async function savePrRecord() {
     await fsSavePayroll(prEditMk);
     closePrModal();
     renderAll();
-    // 토스트 메시지
     showToast(`✅ ${updated.name} 급여 정보가 저장되었습니다.`, 'success');
-  } catch(e) {
-    alert('저장 중 오류가 발생했습니다.');
-  }
+  } catch(e) { alert('저장 중 오류가 발생했습니다.'); }
 }
 window.savePrRecord = savePrRecord;
 
@@ -2918,14 +3064,105 @@ function showToast(msg, type='success') {
   }, 3000);
 }
 
+// ── 히스토리 필터 헬퍼 ──────────────────────────────
+function getHistFilter() {
+  const yearEl  = document.getElementById('hist-filter-year');
+  const monthEl = document.getElementById('hist-filter-month');
+  return {
+    year:  yearEl  ? yearEl.value.trim()  : '',
+    month: monthEl ? monthEl.value.trim() : '',
+  };
+}
+function clearHistFilter() {
+  const y = document.getElementById('hist-filter-year');
+  const m = document.getElementById('hist-filter-month');
+  if (y) y.value = ''; if (m) m.value = '';
+  renderHistory();
+}
+window.clearHistFilter = clearHistFilter;
+
+/** 필터 적용 후 내보내기 */
+function exportFilteredCSV()  { const keys = getFilteredHistKeys(); if (!keys.length) { alert('내보낼 데이터가 없습니다.'); return; } downloadCSV(buildRowsForKeys(keys),  `4대보험_${new Date().toISOString().slice(0,10)}.csv`); }
+function exportFilteredXLSX() { const keys = getFilteredHistKeys(); if (!keys.length) { alert('내보낼 데이터가 없습니다.'); return; } downloadXLSX(buildRowsForKeys(keys), `4대보험_${new Date().toISOString().slice(0,10)}.xlsx`); }
+window.exportFilteredCSV  = exportFilteredCSV;
+window.exportFilteredXLSX = exportFilteredXLSX;
+
+function getFilteredHistKeys() {
+  const { year, month } = getHistFilter();
+  return Object.keys(records).sort().reverse().filter(mk => {
+    if (year  && !mk.startsWith(year))  return false;
+    if (month && !mk.endsWith('-'+month)) return false;
+    return true;
+  });
+}
+
+function buildRowsForKeys(keys) {
+  const header = ['년월','사원번호','이름','기본급','식대','자가운전보조금','육아수당','연구수당','상여금','기타(비과세)','연장수당','휴일근로수당','지급합계',
+                  '국민연금(직원)','건강보험(직원)','장기요양(직원)','고용보험(직원)','직원부담합계',
+                  '국민연금(회사)','건강보험(회사)','장기요양(회사)','고용보험(회사)','산재보험(회사)','회사부담합계','총부담합계',
+                  '추가공제합계','실수령액','보수월액'];
+  const rows = [header];
+  keys.forEach(mk => {
+    const [y,m] = mk.split('-'); const label = `${y}년 ${parseInt(m)}월`;
+    (records[mk]||[]).forEach(r => {
+      const i = r.ins;
+      const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.bonus||0)+(r.otherNontax||0)+(r.overtime||0)+(r.holiday||0);
+      const extraDeduct = (r.extraDeductions||[]).reduce((s,d)=>s+(d.amount||0),0);
+      const net = gross - i.totalEmp - extraDeduct;
+      rows.push([label, r.empCode||'', r.name,
+        r.salary, r.meal||0, r.transport||0, r.childcare||0, r.research||0, r.bonus||0, r.otherNontax||0, r.overtime||0, r.holiday||0, gross,
+        i.pension.emp, i.health.emp, i.longcare.emp, i.employ.emp, i.totalEmp,
+        i.pension.comp, i.health.comp, i.longcare.comp, i.employ.comp, i.accident.comp, i.totalComp,
+        i.totalEmp+i.totalComp, extraDeduct, net, i.base]);
+    });
+  });
+  return rows;
+}
+
 function renderHistory() {
-  const keys = Object.keys(records).sort().reverse();
-  if (!keys.length) { document.getElementById('history-content').innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div>아직 기록된 데이터가 없습니다.</div>'; return; }
+  const { year, month } = getHistFilter();
+  const allKeys = Object.keys(records).sort().reverse();
+  const keys = allKeys.filter(mk => {
+    if (year  && !mk.startsWith(year))    return false;
+    if (month && !mk.endsWith('-'+month)) return false;
+    return true;
+  });
+
+  // 요약 표시
+  const summaryEl = document.getElementById('hist-summary');
+  if (summaryEl) {
+    if (year || month) {
+      const totalRecs = keys.reduce((s,k)=>s+(records[k]||[]).length,0);
+      let totalSalary = 0, totalEmp = 0, totalComp = 0;
+      keys.forEach(mk=>(records[mk]||[]).forEach(r=>{
+        totalSalary += r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.bonus||0)+(r.otherNontax||0)+(r.overtime||0)+(r.holiday||0);
+        totalEmp  += r.ins.totalEmp;
+        totalComp += r.ins.totalComp;
+      }));
+      summaryEl.style.display = 'block';
+      summaryEl.innerHTML = `
+        <span style="color:var(--text-primary);font-weight:600;">${year||'전체'} ${month?parseInt(month)+'월':'전월'}</span>
+        &nbsp;·&nbsp; ${keys.length}개월 / ${totalRecs}명
+        &nbsp;·&nbsp; 지급합계 <strong style="color:var(--text-primary);">${fmt(totalSalary)}원</strong>
+        &nbsp;·&nbsp; 직원부담 <strong style="color:var(--accent-amber);">${fmt(totalEmp)}원</strong>
+        &nbsp;·&nbsp; 회사부담 <strong style="color:var(--accent-teal);">${fmt(totalComp)}원</strong>`;
+    } else {
+      summaryEl.style.display = 'none';
+    }
+  }
+
+  if (!keys.length) {
+    document.getElementById('history-content').innerHTML =
+      '<div class="empty-state"><div class="empty-state-icon">📁</div>' +
+      (year||month ? '조회 조건에 맞는 데이터가 없습니다.' : '아직 기록된 데이터가 없습니다.') +
+      '</div>';
+    return;
+  }
   let html = '';
   keys.forEach(mk => {
     const [y,m] = mk.split('-'); const recs = records[mk];
     let te=0, tc=0, ts=0;
-    recs.forEach(r=>{ te+=r.ins.totalEmp; tc+=r.ins.totalComp; ts+=r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.overtime||0)+(r.holiday||0); });
+    recs.forEach(r=>{ te+=r.ins.totalEmp; tc+=r.ins.totalComp; ts+=r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.bonus||0)+(r.otherNontax||0)+(r.overtime||0)+(r.holiday||0); });
     html += `<div style="margin-bottom:24px;">
       <div class="export-row">
         <div class="history-month-header" style="margin-bottom:0;">
@@ -2945,7 +3182,7 @@ function renderHistory() {
         <thead><tr><th>사원번호</th><th>이름</th><th>지급합계</th><th>직원 부담</th><th>회사 부담</th><th>합계</th><th style="text-align:center;">액션</th></tr></thead>
         <tbody>`;
     recs.forEach(r => {
-      const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.overtime||0)+(r.holiday||0);
+      const gross = r.salary+(r.meal||0)+(r.transport||0)+(r.childcare||0)+(r.research||0)+(r.bonus||0)+(r.otherNontax||0)+(r.overtime||0)+(r.holiday||0);
       const key = encodeURIComponent(r.empId||r.name);
       html += `<tr>
         <td style="text-align:left;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">${r.empCode||'—'}</td>
@@ -3027,8 +3264,10 @@ function r_nameOrFirst(targets) { return targets.length===1 ? targets[0].name : 
 function buildSlipHTML(r, year, month, pageBreak) {
   const emp      = employees.find(e => e.id === r.empId) || { name:r.name, joinDate:'-', status:'active' };
   const ins      = r.ins;
-  const grossPay = r.salary + (r.meal||0) + (r.transport||0) + (r.childcare||0) + (r.research||0) + (r.overtime||0) + (r.holiday||0);
-  const netPay   = grossPay - ins.totalEmp;
+  const grossPay = r.salary + (r.meal||0) + (r.transport||0) + (r.childcare||0) + (r.research||0) + (r.bonus||0) + (r.otherNontax||0) + (r.overtime||0) + (r.holiday||0);
+  const extraDeductions = r.extraDeductions || [];
+  const extraDeductTotal = extraDeductions.reduce((s,d) => s+(d.amount||0), 0);
+  const netPay   = grossPay - ins.totalEmp - extraDeductTotal;
   const today    = new Date();
   const payDate  = `${year}년 ${month}월 ${new Date(year,month,0).getDate()}일`;
   const pb       = pageBreak ? 'style="page-break-before:always;border-top:2px solid #eee;margin-top:0;padding-top:2.5rem;"' : '';
@@ -3049,12 +3288,14 @@ function buildSlipHTML(r, year, month, pageBreak) {
     <div>
       <div class="slip-section-title">지급 내역</div>
       <div class="slip-line"><span class="slip-line-key">기본급</span><span class="slip-line-val">${fmt(r.salary)}원</span></div>
-      ${r.meal    ? `<div class="slip-line"><span class="slip-line-key">식대</span><span class="slip-line-val">${fmt(r.meal)}원</span></div>` : ''}
-      ${r.transport?`<div class="slip-line"><span class="slip-line-key">자가운전보조금</span><span class="slip-line-val">${fmt(r.transport)}원</span></div>` : ''}
-      ${r.childcare?`<div class="slip-line"><span class="slip-line-key">육아수당</span><span class="slip-line-val">${fmt(r.childcare)}원</span></div>` : ''}
-      ${r.research ?`<div class="slip-line"><span class="slip-line-key">연구수당</span><span class="slip-line-val">${fmt(r.research)}원</span></div>` : ''}
-      ${r.overtime ?`<div class="slip-line"><span class="slip-line-key">연장수당</span><span class="slip-line-val">${fmt(r.overtime)}원</span></div>` : ''}
-      ${r.holiday  ?`<div class="slip-line"><span class="slip-line-key">휴일근로수당</span><span class="slip-line-val">${fmt(r.holiday)}원</span></div>` : ''}
+      ${r.meal       ? `<div class="slip-line"><span class="slip-line-key">식대</span><span class="slip-line-val">${fmt(r.meal)}원</span></div>` : ''}
+      ${r.transport  ? `<div class="slip-line"><span class="slip-line-key">자가운전보조금</span><span class="slip-line-val">${fmt(r.transport)}원</span></div>` : ''}
+      ${r.childcare  ? `<div class="slip-line"><span class="slip-line-key">육아수당</span><span class="slip-line-val">${fmt(r.childcare)}원</span></div>` : ''}
+      ${r.research   ? `<div class="slip-line"><span class="slip-line-key">연구수당</span><span class="slip-line-val">${fmt(r.research)}원</span></div>` : ''}
+      ${r.bonus      ? `<div class="slip-line"><span class="slip-line-key">상여금</span><span class="slip-line-val">${fmt(r.bonus)}원</span></div>` : ''}
+      ${r.otherNontax? `<div class="slip-line"><span class="slip-line-key">기타</span><span class="slip-line-val">${fmt(r.otherNontax)}원</span></div>` : ''}
+      ${r.overtime   ? `<div class="slip-line"><span class="slip-line-key">연장수당</span><span class="slip-line-val">${fmt(r.overtime)}원</span></div>` : ''}
+      ${r.holiday    ? `<div class="slip-line"><span class="slip-line-key">휴일근로수당</span><span class="slip-line-val">${fmt(r.holiday)}원</span></div>` : ''}
       <div class="slip-line" style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;">
         <span class="slip-line-key" style="font-weight:700;color:#111;">지급 합계</span>
         <span class="slip-line-val">${fmt(grossPay)}원</span>
@@ -3066,9 +3307,10 @@ function buildSlipHTML(r, year, month, pageBreak) {
       <div class="slip-line"><span class="slip-line-key">건강보험</span><span class="slip-line-val">${fmt(ins.health.emp)}원</span></div>
       <div class="slip-line"><span class="slip-line-key">장기요양보험</span><span class="slip-line-val">${fmt(ins.longcare.emp)}원</span></div>
       <div class="slip-line"><span class="slip-line-key">고용보험</span><span class="slip-line-val">${fmt(ins.employ.emp)}원</span></div>
+      ${extraDeductions.map(d => `<div class="slip-line"><span class="slip-line-key">${d.name}</span><span class="slip-line-val">${fmt(d.amount)}원</span></div>`).join('')}
       <div class="slip-line" style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;">
         <span class="slip-line-key" style="font-weight:700;color:#111;">공제 합계</span>
-        <span class="slip-line-val">${fmt(ins.totalEmp)}원</span>
+        <span class="slip-line-val">${fmt(ins.totalEmp + extraDeductTotal)}원</span>
       </div>
     </div>
   </div>
@@ -3087,6 +3329,7 @@ function buildSlipHTML(r, year, month, pageBreak) {
   <div class="slip-footer">(주)와플랩 · 본 명세서는 급여 지급 내역을 확인하기 위한 공식 문서입니다.</div>
 </div>`;
 }
+
 
 function closeSlipModal() { document.getElementById('slip-modal').style.display = 'none'; }
 window.closeSlipModal = closeSlipModal;
