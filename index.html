@@ -9,19 +9,7 @@
 <!-- SheetJS: Excel 내보내기 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<!--
-  ══════════════════════════════════════════════════════════════
-  🔥 FIREBASE 설정 방법
-  ══════════════════════════════════════════════════════════════
-  1. https://console.firebase.google.com 접속
-  2. 프로젝트 생성 → 웹 앱 추가(</>) → 앱 등록
-  3. "Firebase SDK 추가" 화면에서 firebaseConfig 복사 후 아래 교체
-  4. Firestore Database → 데이터베이스 만들기 (테스트 모드)
-  5. Authentication → 로그인 방법 → 이메일/비밀번호 활성화
-  6. Authentication → 사용자 → 사용자 추가 (ADMIN 계정 1개 생성)
-     예) admin@wafflelab.com / 초기비밀번호
-  ══════════════════════════════════════════════════════════════
--->
+<!-- FIREBASE 설정: console.firebase.google.com 에서 프로젝트 생성 후 아래 CONFIG 값 교체 -->
 <style>
 :root {
   --bg-base: #080C14;
@@ -1618,12 +1606,12 @@ button.small {
       </div>
       <div class="card">
         <!-- 필터 + 내보내기 행 -->
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-          <!-- 필터 입력 그룹 -->
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;">
           <input type="number" id="hist-filter-year" placeholder="년도" min="2020" max="2035"
-            style="width:72px;padding:7px 10px;font-size:13px;flex-shrink:0;"
+            style="width:68px;height:32px;padding:0 8px;font-size:12px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-elevated);color:var(--text-primary);"
             oninput="renderHistory()">
-          <select id="hist-filter-month" style="padding:7px 10px;font-size:13px;min-width:70px;flex-shrink:0;"
+          <select id="hist-filter-month"
+            style="width:72px;height:32px;padding:0 8px;font-size:12px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-elevated);color:var(--text-primary);"
             onchange="renderHistory()">
             <option value="">전체월</option>
             <option value="01">1월</option><option value="02">2월</option>
@@ -1633,17 +1621,16 @@ button.small {
             <option value="09">9월</option><option value="10">10월</option>
             <option value="11">11월</option><option value="12">12월</option>
           </select>
-          <button onclick="clearHistFilter()" style="padding:7px 12px;font-size:12px;flex-shrink:0;">전체 보기</button>
-          <!-- 스페이서 -->
-          <div style="flex:1;min-width:8px;"></div>
-          <!-- 내보내기 -->
-          <div class="export-btns" style="flex-shrink:0;">
+          <button onclick="clearHistFilter()"
+            style="height:32px;padding:0 12px;font-size:12px;white-space:nowrap;">전체 보기</button>
+          <div style="flex:1;"></div>
+          <div class="export-btns">
             <button class="btn-export-csv" onclick="exportFilteredCSV()">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
               CSV
             </button>
             <button class="btn-export-xlsx" onclick="exportFilteredXLSX()">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
               Excel
             </button>
           </div>
@@ -3304,7 +3291,75 @@ function toggleEmpChip(id, el) {
 window.toggleEmpChip = toggleEmpChip;
 
 /** 직원 상세 정보 카드 렌더링 */
+// ── 현재 상세보기 중인 공제항목 배열 (slip panel용) ─────────
+let slipDetailMk  = null;
+let slipDetailKey = null;
+let slipDeductions = [];   // [{name, amount}]
+
+/** slip 상세 공제항목 행 추가 */
+function addSlipDeductRow(name='', amount=0) {
+  const idx = slipDeductions.length;
+  slipDeductions.push({ name, amount });
+  const list = document.getElementById('slip-deduct-list');
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'deduct-row';
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <input type="text"   value="${name}"   placeholder="항목명 (예: 소득세, 학자금 등)"
+      oninput="slipDeductions[${idx}].name=this.value;refreshSlipDeductTotal()">
+    <input type="number" value="${amount}" placeholder="금액"
+      oninput="slipDeductions[${idx}].amount=parseInt(this.value)||0;refreshSlipDeductTotal()">
+    <button class="deduct-del" onclick="removeSlipDeductRow(this,${idx})">✕</button>`;
+  list.appendChild(row);
+  refreshSlipDeductTotal();
+}
+window.addSlipDeductRow = addSlipDeductRow;
+
+function removeSlipDeductRow(btn, idx) {
+  slipDeductions[idx] = null;
+  btn.closest('.deduct-row').remove();
+  refreshSlipDeductTotal();
+}
+window.removeSlipDeductRow = removeSlipDeductRow;
+
+function refreshSlipDeductTotal() {
+  const total = slipDeductions.filter(Boolean).reduce((s,d)=>s+(d.amount||0),0);
+  const el = document.getElementById('slip-deduct-total');
+  if (el) el.textContent = fmt(total) + '원';
+  // 실수령액 재계산
+  const grossEl = document.getElementById('slip-detail-gross-val');
+  const insEl   = document.getElementById('slip-detail-ins-val');
+  const netEl   = document.getElementById('slip-detail-net-val');
+  if (grossEl && insEl && netEl) {
+    const gross   = parseInt(grossEl.dataset.val) || 0;
+    const insTotal= parseInt(insEl.dataset.val)   || 0;
+    netEl.textContent = fmt(gross - insTotal - total) + '원';
+  }
+}
+window.refreshSlipDeductTotal = refreshSlipDeductTotal;
+
+/** 공제항목 저장 (slip 상세 카드에서) */
+async function saveSlipDeductions() {
+  if (!slipDetailMk || !slipDetailKey) return;
+  const recs = records[slipDetailMk] || [];
+  const idx  = recs.findIndex(x => (x.empId||x.name) === slipDetailKey);
+  if (idx < 0) return;
+  const cleaned = slipDeductions.filter(d => d && d.name && d.amount > 0);
+  records[slipDetailMk][idx] = { ...recs[idx], extraDeductions: cleaned };
+  try {
+    await fsSavePayroll(slipDetailMk);
+    showToast('✅ 공제항목이 저장되었습니다.', 'success');
+    renderSlipDetail(slipDetailMk, slipDetailKey);   // 재렌더
+    renderAll();
+  } catch(e) { alert('저장 중 오류가 발생했습니다.'); }
+}
+window.saveSlipDeductions = saveSlipDeductions;
+
 function renderSlipDetail(mk, key) {
+  slipDetailMk  = mk;
+  slipDetailKey = key;
+
   const recs = records[mk] || [];
   const r = recs.find(x => (x.empId||x.name) === key);
   if (!r) return;
@@ -3316,7 +3371,6 @@ function renderSlipDetail(mk, key) {
   const net = gross - ins.totalEmp - extraTotal;
   const emp = employees.find(e => e.id === r.empId) || {};
 
-  // 지급 항목 행들
   const payRows = [
     ['기본급',       r.salary,       true],
     ['식대',         r.meal,         false],
@@ -3336,7 +3390,7 @@ function renderSlipDetail(mk, key) {
         <div class="slip-detail-meta">${y}년 ${parseInt(m)}월 귀속 · 입사일 ${emp.joinDate||'—'} · ${emp.status==='active'?'재직':emp.status==='leave'?'휴직':'퇴직'}</div>
       </div>
       <div style="display:flex;gap:6px;">
-        <button class="small" onclick="openPrModal('${mk}','${encodeURIComponent(key)}')" style="color:var(--accent-blue);border-color:rgba(79,142,247,.3);">✏️ 수정</button>
+        <button class="small" onclick="openPrModal('${mk}','${encodeURIComponent(key)}')" style="color:var(--accent-blue);border-color:rgba(79,142,247,.3);">✏️ 급여 수정</button>
         <button class="small primary" onclick="quickSlip('${key}','${mk}')">🖨 명세서</button>
       </div>
     </div>
@@ -3348,60 +3402,83 @@ function renderSlipDetail(mk, key) {
         ${payRows.map(([k,v]) => `<div class="slip-detail-row"><span class="slip-detail-key">${k}</span><span class="slip-detail-val">${fmt(v)}원</span></div>`).join('')}
         <div class="slip-detail-row" style="border-top:1px solid var(--border-default);margin-top:6px;padding-top:6px;font-weight:700;">
           <span class="slip-detail-key" style="color:var(--text-primary);">지급 합계</span>
-          <span class="slip-detail-val">${fmt(gross)}원</span>
+          <span class="slip-detail-val" id="slip-detail-gross-val" data-val="${gross}">${fmt(gross)}원</span>
         </div>
       </div>
 
-      <!-- 공제 내역 -->
+      <!-- 4대보험 공제 -->
       <div>
-        <div class="slip-detail-section-title">공제 내역 (직원 부담)</div>
+        <div class="slip-detail-section-title">4대보험 공제 (직원 부담)</div>
         <div class="slip-detail-row"><span class="slip-detail-key">국민연금</span><span class="slip-detail-val">${fmt(ins.pension.emp)}원</span></div>
         <div class="slip-detail-row"><span class="slip-detail-key">건강보험</span><span class="slip-detail-val">${fmt(ins.health.emp)}원</span></div>
         <div class="slip-detail-row"><span class="slip-detail-key">장기요양보험</span><span class="slip-detail-val">${fmt(ins.longcare.emp)}원</span></div>
         <div class="slip-detail-row"><span class="slip-detail-key">고용보험</span><span class="slip-detail-val">${fmt(ins.employ.emp)}원</span></div>
-        ${extraDeductions.map(d => `<div class="slip-detail-row"><span class="slip-detail-key">${d.name}</span><span class="slip-detail-val">${fmt(d.amount)}원</span></div>`).join('')}
         <div class="slip-detail-row" style="border-top:1px solid var(--border-default);margin-top:6px;padding-top:6px;font-weight:700;">
-          <span class="slip-detail-key" style="color:var(--text-primary);">공제 합계</span>
-          <span class="slip-detail-val">${fmt(ins.totalEmp+extraTotal)}원</span>
+          <span class="slip-detail-key" style="color:var(--text-primary);">4대보험 합계</span>
+          <span class="slip-detail-val" id="slip-detail-ins-val" data-val="${ins.totalEmp}">${fmt(ins.totalEmp)}원</span>
         </div>
       </div>
     </div>
 
-    <!-- 회사 부담 -->
-    <div class="slip-detail-section-title">회사 부담 4대보험</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
-      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">국민연금</div>
-        <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.pension.comp)}원</div>
+    <!-- 추가 공제 항목 편집 -->
+    <div style="margin-top:4px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="slip-detail-section-title" style="margin-bottom:0;">추가 공제 항목 <span style="font-size:10px;font-weight:400;color:var(--text-muted);text-transform:none;letter-spacing:0;margin-left:4px;">직접 입력 · 수정 · 삭제</span></div>
+        <button onclick="addSlipDeductRow()" style="padding:4px 10px;font-size:11px;border-style:dashed;">+ 항목 추가</button>
       </div>
-      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">건강+장기요양</div>
-        <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.health.comp+ins.longcare.comp)}원</div>
-      </div>
-      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">고용보험</div>
-        <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.employ.comp)}원</div>
-      </div>
-      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">산재보험</div>
-        <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.accident.comp)}원</div>
+      <div id="slip-deduct-list"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+        <div style="font-size:12px;color:var(--text-muted);">
+          추가 공제 합계: <strong style="font-family:var(--font-mono);color:var(--text-primary);" id="slip-deduct-total">${fmt(extraTotal)}원</strong>
+        </div>
+        <button class="primary small" onclick="saveSlipDeductions()">💾 공제항목 저장</button>
       </div>
     </div>
-    <div style="display:flex;justify-content:flex-end;font-size:12px;color:var(--text-muted);margin-bottom:12px;">
-      회사 부담 합계 &nbsp;<strong style="color:var(--text-primary);font-family:var(--font-mono);">${fmt(ins.totalComp)}원</strong>
+
+    <!-- 회사 부담 -->
+    <div style="margin-top:16px;">
+      <div class="slip-detail-section-title">회사 부담 4대보험</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;">
+        <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">국민연금</div>
+          <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.pension.comp)}원</div>
+        </div>
+        <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">건강+장기요양</div>
+          <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.health.comp+ins.longcare.comp)}원</div>
+        </div>
+        <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">고용보험</div>
+          <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.employ.comp)}원</div>
+        </div>
+        <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">산재보험</div>
+          <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);">${fmt(ins.accident.comp)}원</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+        회사 부담 합계 &nbsp;<strong style="color:var(--text-primary);font-family:var(--font-mono);">${fmt(ins.totalComp)}원</strong>
+      </div>
     </div>
 
     <!-- 실수령액 -->
     <div class="slip-detail-net">
       <div class="slip-detail-net-label">실수령액 (예상)</div>
-      <div class="slip-detail-net-val">${fmt(net)}원</div>
+      <div class="slip-detail-net-val" id="slip-detail-net-val">${fmt(net)}원</div>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">보수월액: ${fmt(ins.base)}원${r.insManual ? ' <span style="color:var(--accent-amber)">수동입력</span>' : ''}</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">보수월액: ${fmt(ins.base)}원${r.insManual ? ' · <span style="color:var(--accent-amber)">보험료 수동입력</span>' : ''}</div>
   `;
+
+  // 공제 배열 초기화
+  slipDeductions = [];
 
   const card = document.getElementById('slip-detail-card');
   document.getElementById('slip-detail-content').innerHTML = html;
   card.style.display = 'block';
+
+  // 기존 공제항목 채우기 (HTML 렌더 후)
+  extraDeductions.forEach(d => addSlipDeductRow(d.name, d.amount));
+
   card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 window.renderSlipDetail = renderSlipDetail;
